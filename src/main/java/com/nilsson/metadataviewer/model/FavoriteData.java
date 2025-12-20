@@ -3,9 +3,7 @@ package com.nilsson.metadataviewer.model;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * POJO for storing a favorited metadata prompt with image reference.
- */
+// POJO for storing a favorited metadata prompt with image reference.
 public class FavoriteData {
     private String id;
     private String name;
