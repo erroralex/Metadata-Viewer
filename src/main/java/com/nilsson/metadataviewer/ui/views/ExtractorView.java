@@ -11,6 +11,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.ScrollEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
+import javafx.stage.StageStyle;
 import javafx.stage.Window;
 import org.kordamp.ikonli.fontawesome.FontAwesome;
 import org.kordamp.ikonli.javafx.FontIcon;
@@ -18,8 +19,11 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import java.io.File;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
-import javafx.stage.StageStyle;
 
+/**
+ * Main Extraction View featuring a Drag & Drop zone and metadata cards.
+ * Updated with Save Favorites, Raw JSON viewer, and smooth scrolling.
+ */
 public class ExtractorView extends ScrollPane {
     private final MetadataService service = new MetadataService();
 
@@ -44,7 +48,7 @@ public class ExtractorView extends ScrollPane {
         this.getStyleClass().add("content-view");
         this.setHbarPolicy(ScrollBarPolicy.NEVER);
 
-        // --- SCROLL SPEED ---
+        // Optimized scrolling speed for long prompt lists
         this.addEventFilter(ScrollEvent.SCROLL, event -> {
             double deltaY = event.getDeltaY() * 4.0;
             double height = this.getContent().getBoundsInLocal().getHeight();
@@ -70,12 +74,14 @@ public class ExtractorView extends ScrollPane {
 
         setupPreviewContainer();
 
-        // Save button with the preview
+        // Action panel with Preview and multi-button controls
         VBox previewWrapper = new VBox(10);
         previewWrapper.setAlignment(Pos.TOP_CENTER);
+
         Button btnSave = createSaveButton();
-        btnSave.setMaxWidth(Double.MAX_VALUE);
-        previewWrapper.getChildren().addAll(previewContainer, btnSave);
+        Button btnRaw = createRawButton(); // New Raw JSON toggle
+
+        previewWrapper.getChildren().addAll(previewContainer, btnSave, btnRaw);
 
         dropSection.getChildren().addAll(dropZone, previewWrapper);
 
@@ -111,10 +117,67 @@ public class ExtractorView extends ScrollPane {
         this.setContent(container);
     }
 
+    // Creates a draggable, themed dialog to view the exact raw metadata string.
+    private Button createRawButton() {
+        Button btnRaw = new Button("Raw Metadata");
+        btnRaw.setGraphic(new FontIcon(FontAwesome.CODE));
+        btnRaw.getStyleClass().add("button");
+        btnRaw.setMaxWidth(Double.MAX_VALUE);
+
+        btnRaw.setOnAction(e -> {
+            if (lastData == null || !lastData.containsKey("Raw")) return;
+
+            // Dialog<ButtonType> for better compatibility with Java 8
+            Dialog<ButtonType> dialog = new Dialog<>();
+            dialog.initStyle(StageStyle.UNDECORATED);
+
+            DialogPane pane = dialog.getDialogPane();
+            pane.getStyleClass().add("custom-dialog");
+            if (this.getScene() != null) {
+                pane.getStylesheets().addAll(this.getScene().getStylesheets());
+            }
+            pane.setPrefSize(600, 500);
+
+            Label header = new Label("Raw Image Metadata");
+            header.getStyleClass().add("content-title");
+            header.setStyle("-fx-font-size: 1.2em; -fx-padding: 0 0 10 0;");
+
+            TextArea rawArea = new TextArea(lastData.get("Raw"));
+            rawArea.setEditable(false);
+            rawArea.setWrapText(true);
+            rawArea.getStyleClass().add("text-area");
+            VBox.setVgrow(rawArea, Priority.ALWAYS);
+
+            Button closeBtn = new Button("Close Viewer");
+            closeBtn.getStyleClass().add("button");
+
+            // Explicitly hide the dialog window
+            closeBtn.setOnAction(ev -> {
+                dialog.setResult(ButtonType.CLOSE);
+                dialog.hide();
+            });
+
+            VBox content = new VBox(10, header, rawArea, closeBtn);
+            content.setPadding(new Insets(20));
+            content.setAlignment(Pos.CENTER_LEFT);
+            pane.setContent(content);
+
+            // Required to allow the dialog to close in some Java 8 versions
+            pane.getButtonTypes().add(ButtonType.CLOSE);
+            pane.lookupButton(ButtonType.CLOSE).setVisible(false);
+
+            setupDialogDragging(pane);
+            dialog.showAndWait();
+        });
+        return btnRaw;
+    }
+
     private Button createSaveButton() {
         Button fv = new Button("Save Favorite");
         fv.setGraphic(new FontIcon(FontAwesome.STAR));
         fv.getStyleClass().add("button");
+        fv.setMaxWidth(Double.MAX_VALUE);
+
         fv.setOnAction(e -> {
             if (lastData == null) return;
 
@@ -130,20 +193,7 @@ public class ExtractorView extends ScrollPane {
                 dialogPane.getStylesheets().addAll(this.getScene().getStylesheets());
             }
 
-            // --- DRAGGING LOGIC ---
-            AtomicReference<Double> xOffset = new AtomicReference<>((double) 0);
-            AtomicReference<Double> yOffset = new AtomicReference<>((double) 0);
-
-            dialogPane.setOnMousePressed(event -> {
-                xOffset.set(event.getSceneX());
-                yOffset.set(event.getSceneY());
-            });
-
-            dialogPane.setOnMouseDragged(event -> {
-                Window window = dialogPane.getScene().getWindow();
-                window.setX(event.getScreenX() - xOffset.get());
-                window.setY(event.getScreenY() - yOffset.get());
-            });
+            setupDialogDragging(dialogPane);
 
             tid.showAndWait().ifPresent(name -> {
                 FavoriteRegistry.getInstance().addFavorite(new FavoriteData(
@@ -154,6 +204,24 @@ public class ExtractorView extends ScrollPane {
             });
         });
         return fv;
+    }
+
+    private void setupDialogDragging(DialogPane pane) {
+        AtomicReference<Double> xOffset = new AtomicReference<>((double) 0);
+        AtomicReference<Double> yOffset = new AtomicReference<>((double) 0);
+
+        pane.setOnMousePressed(event -> {
+            xOffset.set(event.getSceneX());
+            yOffset.set(event.getSceneY());
+        });
+
+        pane.setOnMouseDragged(event -> {
+            Window window = pane.getScene().getWindow();
+            if (window != null) {
+                window.setX(event.getScreenX() - xOffset.get());
+                window.setY(event.getScreenY() - yOffset.get());
+            }
+        });
     }
 
     private VBox createPromptSection(String title, TextArea area, int height) {
