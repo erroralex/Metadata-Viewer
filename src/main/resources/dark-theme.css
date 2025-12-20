@@ -193,3 +193,15 @@
     -fx-scale-y: 0;
     -fx-opacity: 0;
 }
+
+.custom-dialog .text-area {
+    -fx-control-inner-background: #0b0e14; /* Darker background for code */
+    -fx-text-fill: -app-accent;           /* Purple text for the raw JSON */
+    -fx-border-color: -app-border-subtle;
+    -fx-border-radius: 4;
+}
+
+/* Ensure the code scrollbar is subtle */
+.custom-dialog .text-area .scroll-pane {
+    -fx-background-color: transparent;
+}

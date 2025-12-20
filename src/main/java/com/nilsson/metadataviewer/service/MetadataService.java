@@ -4,6 +4,7 @@ import com.drew.imaging.ImageMetadataReader;
 import com.drew.metadata.Directory;
 import com.drew.metadata.Metadata;
 import com.drew.metadata.Tag;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -14,10 +15,15 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-// Service for extracting AI metadata
+/**
+ * Unified service for extracting AI metadata across all major platforms.
+ * Supports: ComfyUI, SwarmUI, A1111, Forge, Reforge, and SD-Matrix.
+ */
 public class MetadataService {
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    // Enable ALLOW_NON_NUMERIC_NUMBERS to handle 'NaN' tokens frequently found in ComfyUI
+    private final ObjectMapper mapper = new ObjectMapper()
+            .configure(JsonParser.Feature.ALLOW_NON_NUMERIC_NUMBERS, true);
 
     public Map<String, String> getExtractedData(File file) {
         Map<String, String> results = new HashMap<>();
@@ -31,17 +37,25 @@ public class MetadataService {
         results.put("Raw", rawData);
         String trimmed = rawData.trim();
 
-        if (trimmed.startsWith("{")) {
+        // Detect JSON-based formats (ComfyUI / SwarmUI / Matrix-JSON)
+        if (trimmed.startsWith("{") || (trimmed.startsWith("\"") && trimmed.contains("\"prompt\""))) {
             parseJsonMetadata(trimmed, results);
-        } else if (rawData.contains("Steps:") && (rawData.contains("Sampler:") || rawData.contains("Schedule type:"))) {
+        }
+        // Detect Parameter-based formats (A1111 / Forge / Reforge / Matrix-Text)
+        else if (rawData.contains("Steps:") && (rawData.contains("Sampler:") || rawData.contains("Schedule type:"))) {
             parseA1111Format(rawData, results);
-        } else {
+        }
+        else {
             results.put("Prompt", rawData);
         }
 
         return results;
     }
 
+    /**
+     * Scans for metadata tags across all directories.
+     * Prioritizes 'parameters' (A1111/Forge) and 'prompt/workflow' (ComfyUI).
+     */
     private String extractRawMetadata(File file) {
         try {
             Metadata metadata = ImageMetadataReader.readMetadata(file);
@@ -55,10 +69,18 @@ public class MetadataService {
                     String name = tag.getTagName().toLowerCase();
                     String desc = tag.getDescription();
 
+                    // Standard AI Metadata tags
                     if (name.contains("parameters")) parameters = desc;
                     else if (name.equals("prompt")) prompt = desc;
                     else if (name.equals("workflow")) workflow = desc;
                     else if (name.contains("user comment")) comment = desc;
+
+                        // ComfyUI specific chunk detection within "Textual Data"
+                    else if (name.contains("textual data") && desc.contains(": {")) {
+                        String jsonPart = desc.substring(desc.indexOf("{")).trim();
+                        // Only return if it actually looks like JSON to avoid false positives
+                        if (jsonPart.startsWith("{")) return jsonPart;
+                    }
                 }
             }
             if (parameters != null) return parameters;
@@ -72,12 +94,17 @@ public class MetadataService {
 
     private void parseJsonMetadata(String json, Map<String, String> results) {
         try {
-            JsonNode root = mapper.readTree(json);
+            // Handle escaped JSON strings if the chunk was double-stringified
+            String cleanJson = json;
+            if (json.startsWith("\"") && json.endsWith("\"")) {
+                cleanJson = json.substring(1, json.length() - 1).replace("\\\"", "\"");
+            }
+
+            JsonNode root = mapper.readTree(cleanJson);
             results.put("Type", "ComfyUI/SwarmUI/JSON");
 
             findKeysRecursively(root, results);
 
-            // Special fallback for Prompt if the recursive search missed it
             if (!results.containsKey("Prompt") || results.get("Prompt").isEmpty()) {
                 results.put("Prompt", findLongestText(root));
             }
@@ -86,6 +113,10 @@ public class MetadataService {
         }
     }
 
+    /**
+     * Aggressive recursive search for generation parameters.
+     * Now includes support for UNET loaders and VAE loaders found in custom workflows.
+     */
     private void findKeysRecursively(JsonNode node, Map<String, String> results) {
         if (node.isObject()) {
             Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
@@ -94,35 +125,67 @@ public class MetadataService {
                 String key = entry.getKey().toLowerCase();
                 JsonNode value = entry.getValue();
 
-                // 1. Model Support (SwarmUI & ComfyUI)
-                if ((key.equals("model") || key.equals("ckpt_name")) && !results.containsKey("Model")) {
+                // 1. PRIMARY MODEL DETECTION (High Priority)
+                // Keys like 'unet_name' and 'ckpt_name' are the true models.
+                boolean isTrueModelKey = key.equals("ckpt_name") ||
+                        key.equals("unet_name") ||
+                        key.equals("model_name") ||
+                        key.contains("checkpoint") ||
+                        key.equals("model_file");
+
+                if (isTrueModelKey && value.isTextual()) {
+                    String modelName = value.asText();
+                    if (modelName.length() > 4 && !modelName.contains("{")) {
+                        // Always set/overwrite if it's a true model
+                        results.put("Model", modelName);
+                    }
+                }
+
+                // 2. VAE DETECTION (Low Priority Fallback)
+                // Only set VAE as 'Model' if no true model has been found yet.
+                else if (key.equals("vae_name") && value.isTextual() && !results.containsKey("Model")) {
                     results.put("Model", value.asText());
                 }
 
-                // 2. Generation Stats (Steps, Seed, CFG)
+                // 3. SAMPLER & SCHEDULER
+                else if (key.equals("sampler_name") && value.isTextual()) {
+                    String sampler = value.asText();
+                    String scheduler = node.has("scheduler") ? node.get("scheduler").asText() : "";
+                    results.put("Sampler", scheduler.isEmpty() ? sampler : sampler + " (" + scheduler + ")");
+                }
+
+                // 4. GENERATION STATS
                 else if (key.equals("steps") && !results.containsKey("Steps")) {
                     results.put("Steps", value.asText());
                 }
                 else if (key.equals("seed") && !results.containsKey("Seed")) {
                     results.put("Seed", value.asText());
                 }
-                else if (key.equals("cfgscale") || key.equals("cfg")) {
+                else if ((key.equals("cfg") || key.equals("cfgscale")) && !results.containsKey("CFG")) {
                     results.put("CFG", value.asText());
                 }
 
-                // 3. Sampler/Scheduler
-                else if ((key.equals("sampler_name") || key.equals("sampler")) && !results.containsKey("Sampler")) {
-                    String sampler = value.asText();
-                    String scheduler = node.has("scheduler") ? node.get("scheduler").asText() : "";
-                    results.put("Sampler", scheduler.isEmpty() ? sampler : sampler + " (" + scheduler + ")");
+                // 5. PROMPT DETECTION (Positive vs Negative)
+                else if (key.equals("text") && value.isTextual()) {
+                    String t = value.asText();
+                    if (t.length() > 10 && !t.startsWith("{") && !t.startsWith("[")) {
+                        // Use metadata title to distinguish Positive from Negative
+                        if (node.has("_meta") && node.get("_meta").has("title") &&
+                                node.get("_meta").get("title").asText().toLowerCase().contains("negative")) {
+                            results.put("Negative", t);
+                        } else if (!results.containsKey("Prompt")) {
+                            results.put("Prompt", t);
+                        }
+                    }
                 }
 
-                // 4. Prompts (Positive & Negative)
-                else if (key.equals("prompt") && !results.containsKey("Prompt")) {
-                    results.put("Prompt", value.asText().trim());
-                }
-                else if (key.equals("negativeprompt") || key.equals("negative_prompt")) {
-                    results.put("Negative", value.asText().trim());
+                // 6. LORA TRACKING
+                else if (key.contains("lora_name") && value.isTextual()) {
+                    String existing = results.getOrDefault("Loras", "");
+                    String current = value.asText();
+                    if (!existing.contains(current)) {
+                        results.put("Loras", existing.isEmpty() ? current : existing + ", " + current);
+                    }
                 }
 
                 findKeysRecursively(value, results);
@@ -138,7 +201,7 @@ public class MetadataService {
         final String[] longest = {"No descriptive prompt found"};
         node.findValues("text").forEach(v -> {
             String val = v.asText();
-            if (val.length() > longest[0].length() && !val.startsWith("{")) {
+            if (val.length() > longest[0].length() && !val.contains("{")) {
                 longest[0] = val;
             }
         });
@@ -149,6 +212,7 @@ public class MetadataService {
         String[] sections = raw.split("\nSteps:");
         String promptPart = sections[0];
 
+        // Robust Positive/Negative Split
         if (promptPart.contains("Negative prompt:")) {
             String[] split = promptPart.split("Negative prompt:");
             results.put("Prompt", split[0].trim());
@@ -164,10 +228,12 @@ public class MetadataService {
             results.put("CFG", extractRegex(footer, "CFG scale: ([^,]+)"));
             results.put("Seed", extractRegex(footer, "Seed: ([^,]+)"));
 
+            // Capture Sampler and Scheduler for Reforge/Forge compatibility
             String sampler = extractRegex(footer, "Sampler: ([^,]+)");
             String scheduler = extractRegex(footer, "Schedule type: ([^,]+)");
             results.put("Sampler", (scheduler.equals("N/A") || scheduler.isEmpty()) ? sampler : sampler + " (" + scheduler + ")");
 
+            // Lora Extraction
             Pattern p = Pattern.compile("<lora:([^:]+):");
             Matcher m = p.matcher(raw);
             java.util.Set<String> loras = new java.util.LinkedHashSet<>();
