@@ -5,9 +5,19 @@
 ![CSS](https://img.shields.io/badge/CSS-Obsidian_Indigo-1572B6?style=for-the-badge&logo=css3&logoColor=white)
 ![Jackson](https://img.shields.io/badge/Persistence-Jackson_JSON-2f2f2f?style=for-the-badge&logo=json&logoColor=white)
 
-A professional and private desktop application for extracting, managing, and storing generation parameters from AI-generated images. Designed specifically for high-performance workflows across all major AI interfaces.
+## 📖 About
 
-This project demonstrates **layered architecture**, **recursive JSON parsing**, and **programmatic UI development** without the use of FXML.
+The **AI Metadata Viewer & Extractor** was developed to solve the "fragmentation problem" in the generative AI ecosystem. With various platforms like ComfyUI, A1111, and SwarmUI storing generation data in vastly different formats—ranging from structured JSON node graphs to raw text chunks—artists often lose track of the exact settings used for their best creations.
+
+This tool bridges that gap by providing a unified, high-performance interface that "just works" regardless of the source platform.
+
+### The Vision
+* **Unified Intelligence:** Using a deep-recursive parsing engine, the app identifies models, samplers, and prompts buried within complex, nested JSON structures that standard parsers often miss.
+* **Developer-Centric Design:** Built for those who live in their IDEs. The "Obsidian & Indigo" theme provides a low-strain, high-contrast environment, while the **Raw Metadata Inspector** allows for deep-dive debugging of new or custom node outputs.
+* **Performance First:** By leveraging a programmatic, "Code-First" JavaFX approach (avoiding the overhead of FXML), the application remains lightweight, launching instantly and handling large image drops with zero lag.
+* **Privacy & Persistence:** All data, including the **Favorites Library**, is **stored locally** in human-readable JSON files. **Your prompts and workflows never leave your machine**.
+
+This project serves as a technical showcase of how modern Java desktop applications can be both aesthetically striking and technically robust.
 
 ---
 
@@ -28,22 +38,6 @@ This project demonstrates **layered architecture**, **recursive JSON parsing**, 
 | *Deep Inspection for Complex Workflows* | *Custom Undecorated Themed Dialogs* |
 
 </details>
-
----
-
-## 📖 About
-
-The **AI Metadata Viewer & Extractor** was developed to solve the "fragmentation problem" in the generative AI ecosystem. With various platforms like ComfyUI, A1111, and SwarmUI storing generation data in vastly different formats—ranging from structured JSON node graphs to raw text chunks—artists often lose track of the exact settings used for their best creations.
-
-This tool bridges that gap by providing a unified, high-performance interface that "just works" regardless of the source platform.
-
-### The Vision
-* **Unified Intelligence:** Using a deep-recursive parsing engine, the app identifies models, samplers, and prompts buried within complex, nested JSON structures that standard parsers often miss.
-* **Developer-Centric Design:** Built for those who live in their IDEs. The "Obsidian & Indigo" theme provides a low-strain, high-contrast environment, while the **Raw Metadata Inspector** allows for deep-dive debugging of new or custom node outputs.
-* **Performance First:** By leveraging a programmatic, "Code-First" JavaFX approach (avoiding the overhead of FXML), the application remains lightweight, launching instantly and handling large image drops with zero lag.
-* **Privacy & Persistence:** All data, including the **Favorites Library**, is **stored locally** in human-readable JSON files. **Your prompts and workflows never leave your machine**.
-
-This project serves as a technical showcase of how modern Java desktop applications can be both aesthetically striking and technically robust.
 
 ---
 
