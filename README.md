@@ -41,7 +41,7 @@ This tool bridges that gap by providing a unified, high-performance interface th
 * **Unified Intelligence:** Using a deep-recursive parsing engine, the app identifies models, samplers, and prompts buried within complex, nested JSON structures that standard parsers often miss.
 * **Developer-Centric Design:** Built for those who live in their IDEs. The "Obsidian & Indigo" theme provides a low-strain, high-contrast environment, while the **Raw Metadata Inspector** allows for deep-dive debugging of new or custom node outputs.
 * **Performance First:** By leveraging a programmatic, "Code-First" JavaFX approach (avoiding the overhead of FXML), the application remains lightweight, launching instantly and handling large image drops with zero lag.
-* **Privacy & Persistence:** All data, including the **Favorites Library**, is stored locally in human-readable JSON files. Your prompts and workflows never leave your machine.
+* **Privacy & Persistence:** All data, including the **Favorites Library**, is **stored locally** in human-readable JSON files. **Your prompts and workflows never leave your machine**.
 
 This project serves as a technical showcase of how modern Java desktop applications can be both aesthetically striking and technically robust.
 
