@@ -1,21 +1,8 @@
-/*
+/* * ===================================================================================
+ * METADATA VIEWER - MODERN DARK & PURPLE THEME (RESTORED)
  * ===================================================================================
- * WIGELL CAMPING UI - MODERN AI DARK THEME (REFACTORED)
- * ===================================================================================
- *
- * THEME COLOR PALETTE:
- * - BASE Background: #0b0e14 (Deep Obsidian)
- * - CONTAINERS/Controls: #151921 (Slate Dark)
- * - ACCENT Color (Primary): #7c4dff (Vibrant Indigo/Violet)
- * - TEXT/CONTRAST: #e2e8f0 (Slate White)
- * - BAR CHART HOVER: #5e35b1 (Deep Purple)
- *
- * - Refactored for a sleek, modern AI-portal aesthetic.
  */
 
-/* ==================================================== */
-/* --- 1. GLOBAL VARIABLES AND ROOT STYLES --- */
-/* ==================================================== */
 .root {
     /* Primary Background Colors */
     -fx-background-color: #0b0e14;
@@ -25,25 +12,65 @@
     -fx-color-background-secondary: #151921;
     -fx-border-color-subtle: #2d333b;
 
-    /* Text & Accent Colors */
-    -fx-text-color-primary: #e2e8f0;
+    /* Text & Accent Colors - RESTORED TO VIBRANT INDIGO/PURPLE */
     -fx-accent-color: #7c4dff;
+    -fx-text-color-primary: #e2e8f0;
 
     /* Global Typography */
     -fx-font-family: "Inter", "Segoe UI", Arial, sans-serif;
     -fx-font-size: 14px;
 }
 
-/* ========================================= */
-/* --- 2. GLOBAL ELEMENTS & TYPOGRAPHY --- */
-/* ========================================= */
-
-/* Standard Text Fill */
-.label, .text-field, .password-field, .text-area {
-    -fx-text-fill: -fx-text-color-primary;
+/* General Icon Styling - Restoring Purple Icons */
+.ikonli-font-icon {
+    -fx-fill: -fx-accent-color;
+    -fx-icon-color: -fx-accent-color;
 }
 
-/* Major Content Titles */
+/* * Metadata card values are optimized for long strings (Loras).
+ * Forced wrapping prevents the layout from expanding horizontally.
+ */
+.income-stat-value {
+    -fx-text-fill: -fx-accent-color;
+    -fx-font-size: 1.4em;
+    -fx-font-weight: bold;
+    -fx-wrap-text: true;
+    -fx-line-spacing: 2px;
+    /* Removed problematic lookup to fix console warnings */
+}
+
+.income-stats-box {
+    -fx-background-color: #1c212b;
+    -fx-background-radius: 8;
+    -fx-border-color: #2d333b;
+    -fx-border-width: 1;
+    -fx-padding: 15;
+}
+
+/* Drop zone with purple highlights */
+.drop-zone {
+    -fx-background-color: rgba(124, 77, 255, 0.03);
+    -fx-border-color: rgba(124, 77, 255, 0.4);
+    -fx-border-width: 2;
+    -fx-border-style: dashed;
+    -fx-border-radius: 10;
+}
+
+.drop-zone:hover, .drop-zone-active {
+    -fx-border-color: -fx-accent-color;
+    -fx-background-color: rgba(124, 77, 255, 0.1);
+}
+
+.drop-zone .ikonli-font-icon {
+    -fx-fill: -fx-accent-color;
+    -fx-icon-color: -fx-accent-color;
+}
+
+/* UI Structure Cleanup */
+.content-view {
+    -fx-padding: 30;
+}
+
 .content-title {
     -fx-text-fill: #ffffff;
     -fx-font-size: 1.8em;
@@ -51,378 +78,43 @@
     -fx-padding: 0 0 10 0;
 }
 
-/* Application/Sidebar Title */
 .app-title {
     -fx-text-fill: -fx-accent-color;
     -fx-font-size: 1.2em;
     -fx-font-weight: bold;
-    -fx-padding: 0 0 15 0;
 }
 
-/* Login Screen Header Title */
-.label.login-title {
-    -fx-font-size: 2.2em;
-    -fx-font-weight: bold;
+/* Standard Element Overrides for consistency */
+.label {
+    -fx-text-fill: -fx-text-color-primary;
 }
 
-/* General Icon Styling (Default to Accent Color) */
-.ikonli-font-icon {
-    -fx-fill: -fx-accent-color;
+/* Fix for Favorites View text cutting off in both ListViews and TableViews */
+.list-cell .label, .table-cell .label, .table-cell {
+    -fx-wrap-text: true;
 }
 
-/* ================================ */
-/* --- 3. CUSTOM WINDOW TITLE BAR --- */
-/* ================================ */
-
-.custom-title-bar {
-    -fx-background-color: #080a0f;
-    -fx-padding: 5 0 5 15;
+.text-area {
+    -fx-control-inner-background: #151921;
+    -fx-text-fill: -fx-text-color-primary;
     -fx-border-color: #2d333b;
-    -fx-border-width: 0 0 1 0;
 }
 
-.custom-title-bar .title-label {
-    -fx-text-fill: -fx-text-color-primary;
-    -fx-font-weight: bold;
-    -fx-opacity: 0.8;
-}
-
-/* Window buttons (Minimize/Maximize/Close) */
-.custom-title-bar .window-button {
-    -fx-background-color: transparent;
-    -fx-text-fill: #94a3b8;
-}
-
-.custom-title-bar .window-button:hover {
-    -fx-background-color: #1e293b;
-    -fx-text-fill: #ffffff;
-}
-
-/* Specific Close Button Hover (Red) */
-.custom-title-bar .window-close:hover {
-    -fx-background-color: #ef4444;
-    -fx-text-fill: #ffffff;
-}
-
-/* =================================== */
-/* --- 4. INPUT FIELDS (TEXT, COMBO, DATE) --- */
-/* =================================== */
-
-.text-field, .password-field, .text-area, .date-picker, .combo-box {
-    -fx-background-color: #1c212b;
-    -fx-prompt-text-fill: #64748b;
-    -fx-control-inner-background: #1c212b;
-    -fx-border-color: -fx-border-color-subtle;
-    -fx-border-radius: 6;
-    -fx-background-radius: 6;
-    -fx-padding: 8 12;
-}
-
-/* Focus State (Accent Border) */
-.text-field:focused, .password-field:focused, .text-area:focused {
-    -fx-border-color: -fx-accent-color;
-    -fx-background-color: #232936;
-}
-
-/* DatePicker & ComboBox Arrows/Icons */
-.date-picker .arrow-button, .combo-box .arrow-button {
-    -fx-background-color: transparent;
-}
-.date-picker .arrow-button .arrow, .combo-box .arrow-button .arrow {
-    -fx-background-color: -fx-text-color-primary;
-}
-
-/* ======================================== */
-/* --- 5. DATEPICKER CALENDAR POPUP --- */
-/* ======================================== */
-
-.date-picker-popup {
-    -fx-background-color: -fx-color-background-secondary;
-    -fx-base: -fx-color-background-secondary;
-    -fx-border-color: -fx-accent-color;
-    -fx-border-width: 1;
-}
-
-.date-picker-popup .month-view, .date-picker-popup .month-year-pane, .date-picker-popup .calendar-cell {
-    -fx-background-color: -fx-color-background-secondary;
-    -fx-text-fill: -fx-text-color-primary;
-}
-
-.date-picker-popup .day-cell.previous-month, .date-picker-popup .day-cell.next-month {
-    -fx-text-fill: #475569;
-}
-
-/* Hover State */
-.date-picker-popup .day-cell:hover {
-    -fx-background-color: -fx-accent-color;
-    -fx-text-fill: #ffffff;
-}
-
-/* Selected Date */
-.date-picker-popup .date-cell:selected {
-    -fx-background-color: -fx-accent-color;
-    -fx-text-fill: #ffffff;
-}
-
-/* Calendar Navigation Arrows */
-.date-picker-popup .spinner-button .arrow,
-.date-picker-popup .spinner-button .left-arrow,
-.date-picker-popup .spinner-button .right-arrow {
-    -fx-background-color: -fx-accent-color !important;
-    -fx-mark-color: -fx-accent-color !important;
-    -fx-fill: -fx-accent-color !important;
-    -fx-opacity: 1.0 !important;
-}
-
-/* ========================= */
-/* --- 6. BUTTONS --- */
-/* ========================= */
 .button {
     -fx-background-color: #1e293b;
     -fx-text-fill: #f8fafc;
     -fx-border-color: #334155;
     -fx-border-radius: 6;
-    -fx-background-radius: 6;
-    -fx-padding: 8 16;
     -fx-cursor: hand;
 }
 
-/* General Button Hover (Uses Accent Color) */
 .button:hover {
     -fx-background-color: -fx-accent-color;
     -fx-text-fill: #ffffff;
-    -fx-border-color: -fx-accent-color;
 }
 
+/* Ensure button icons turn white or keep accent on hover */
 .button:hover .ikonli-font-icon {
     -fx-fill: #ffffff;
-}
-
-/* Primary/Login Accent Button */
-.login-button {
-    -fx-background-color: -fx-accent-color;
-    -fx-text-fill: #ffffff;
-    -fx-font-weight: bold;
-    -fx-border-color: -fx-accent-color;
-}
-
-.login-button:hover {
-    -fx-background-color: #6d28d9; /* Darker Purple */
-    -fx-border-color: #6d28d9;
-}
-
-/* Secondary/Exit Button */
-.exit-button {
-    -fx-background-color: #334155;
-}
-
-.exit-button:hover {
-    -fx-background-color: #475569;
-    -fx-text-fill: #ffffff;
-}
-
-/* ============================ */
-/* --- 7. SIDE NAVIGATION --- */
-/* ============================ */
-
-/* Sidebar Container Background */
-.side-navigation {
-    -fx-background-color: #080a0f;
-    -fx-border-color: #2d333b;
-    -fx-border-width: 0 1 0 0;
-}
-
-/* Active Navigation Button */
-.nav-button-active {
-    -fx-background-color: rgba(124, 77, 255, 0.1);
-    -fx-text-fill: -fx-accent-color;
-    -fx-font-weight: bold;
-    -fx-border-color: -fx-accent-color;
-    -fx-border-width: 0 0 0 4;
-    -fx-padding: 8 15 8 11;
-}
-
-.nav-button-active .ikonli-font-icon {
-    -fx-fill: -fx-accent-color;
-}
-
-/* Sub-Menu/Indented Buttons */
-.sub-nav-button {
-    -fx-background-color: transparent;
-    -fx-text-fill: #94a3b8;
-    -fx-padding: 8 10 8 20;
-}
-
-.sub-nav-button:hover {
-    -fx-text-fill: #ffffff;
-    -fx-background-color: rgba(255, 255, 255, 0.05);
-}
-
-/* ================================== */
-/* --- 8. TABLEVIEW / DATA GRIDS --- */
-/* ================================== */
-
-.table-view {
-    -fx-base: #151921;
-    -fx-background-color: #151921;
-    -fx-control-inner-background: #151921;
-    -fx-border-color: #2d333b;
-    -fx-border-width: 1;
-    -fx-background-radius: 8;
-    -fx-border-radius: 8;
-}
-
-/* Table Header */
-.table-view .column-header-background {
-    -fx-background-color: #0f172a;
-    -fx-border-color: -fx-accent-color;
-    -fx-border-width: 0 0 2 0;
-}
-
-.table-view .column-header .label {
-    -fx-text-fill: #94a3b8;
-    -fx-font-weight: bold;
-    -fx-font-size: 0.9em;
-}
-
-/* Row Striping */
-.table-row-cell:even {
-    -fx-background-color: #151921;
-}
-
-.table-row-cell:odd {
-    -fx-background-color: #0e1217;
-}
-
-/* Row Selection */
-.table-row-cell:selected {
-    -fx-background-color: rgba(124, 77, 255, 0.2);
-    -fx-text-fill: #ffffff;
-}
-
-.table-cell {
-    -fx-border-color: transparent #2d333b transparent transparent;
-    -fx-padding: 10 12;
-}
-
-/* ============================ */
-/* --- 9. DIALOGS / MODALS --- */
-/* ============================ */
-
-.dialog-pane {
-    -fx-background-color: #151921;
-    -fx-border-color: -fx-accent-color;
-    -fx-border-width: 1;
-    -fx-border-radius: 10;
-    -fx-background-radius: 10;
-}
-
-.dialog-pane .header-panel {
-    -fx-background-color: #0f172a;
-}
-
-.dialog-pane .header-panel .label {
-    -fx-font-weight: bold;
-    -fx-text-fill: -fx-accent-color;
-}
-
-.dialog-pane .button-bar {
-    -fx-background-color: #0f172a;
-    -fx-padding: 12 15;
-}
-
-/* ================================== */
-/* --- 10. LISTVIEW --- */
-/* ================================== */
-
-.list-view {
-    -fx-background-color: #151921;
-    -fx-border-color: #2d333b;
-    -fx-border-radius: 6;
-}
-
-.list-cell {
-    -fx-text-fill: #94a3b8;
-}
-
-.list-cell:selected {
-    -fx-background-color: -fx-accent-color;
-    -fx-text-fill: #ffffff;
-}
-
-/* ================================== */
-/* --- 11. PROFIT/STAT LABELS --- */
-/* ================================== */
-
-.income-stats-box {
-    -fx-padding: 15 20;
-    -fx-background-color: #1c212b;
-    -fx-background-radius: 8;
-    -fx-border-color: #2d333b;
-    -fx-border-width: 1;
-}
-
-.income-stat-label {
-    -fx-text-fill: #64748b;
-    -fx-font-size: 1.1em;
-}
-
-.income-stat-value {
-    -fx-text-fill: -fx-accent-color;
-    -fx-font-size: 1.6em;
-    -fx-font-weight: bold;
-}
-
-/* ================================== */
-/* --- 12. CHART / BAR CHART --- */
-/* ================================== */
-
-.profit-chart {
-    -fx-background-color: #151921;
-}
-
-.profit-chart .axis {
-    -fx-tick-label-fill: #64748b;
-    -fx-axis-label-fill: #94a3b8;
-}
-
-.profit-chart .chart-bar {
-    -fx-bar-fill: -fx-accent-color;
-    -fx-opacity: 0.8;
-}
-
-.profit-chart .chart-bar:hover {
-    -fx-bar-fill: #5e35b1;
-    -fx-opacity: 1.0;
-}
-
-/* ================================== */
-/* --- 13. METADATA EXTRACTOR UI --- */
-/* ================================== */
-
-/* Base style for the image drop panel */
-.drop-zone {
-    -fx-background-color: rgba(124, 77, 255, 0.03); /* Subtle purple base glow */
-    -fx-border-color: rgba(124, 77, 255, 0.4); /* Muted purple border */
-    -fx-border-width: 2;
-    -fx-border-style: dashed;
-    -fx-border-radius: 10;
-    -fx-background-radius: 10;
-}
-
-/* Highlight state when dragging over or active */
-.drop-zone-active, .drop-zone:hover {
-    -fx-border-color: -fx-accent-color; /* Vibrant Bright Purple */
-    -fx-background-color: rgba(124, 77, 255, 0.15); /* Strong purple background glow */
-}
-
-.drop-zone .label {
-    -fx-text-fill: #94a3b8; /* Muted text */
-    -fx-font-size: 1.2em;
-    -fx-font-weight: bold;
-}
-
-.drop-zone-active .label, .drop-zone:hover .label {
-    -fx-text-fill: -fx-accent-color; /* Text turns purple */
-    -fx-opacity: 1.0;
+    -fx-icon-color: #ffffff;
 }
