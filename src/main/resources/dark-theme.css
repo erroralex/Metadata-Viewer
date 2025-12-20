@@ -1,53 +1,128 @@
 /* * ===================================================================================
- * METADATA VIEWER - MODERN DARK & PURPLE THEME (RESTORED)
+ * METADATA VIEWER - MODERN DARK & PURPLE THEME (FULL UPDATED VERSION)
  * ===================================================================================
  */
 
 .root {
-    /* Primary Background Colors */
-    -fx-background-color: #0b0e14;
-    -fx-base: #0b0e14;
+    /* Theme Color Variables */
+    -app-bg-main: #0b0e14;
+    -app-bg-secondary: #151921;
+    -app-bg-card: #1c212b;
+    -app-accent: #7c4dff;
+    -app-text-primary: #e2e8f0;
+    -app-text-muted: #94a3b8;
+    -app-border-subtle: #2d333b;
 
-    /* Secondary UI Colors (Used for Controls/Containers) */
-    -fx-color-background-secondary: #151921;
-    -fx-border-color-subtle: #2d333b;
-
-    /* Text & Accent Colors - RESTORED TO VIBRANT INDIGO/PURPLE */
-    -fx-accent-color: #7c4dff;
-    -fx-text-color-primary: #e2e8f0;
+    /* Apply Primary Background */
+    -fx-background-color: -app-bg-main;
+    -fx-base: -app-bg-main;
+    -fx-accent: -app-accent;
+    -fx-default-button: -app-accent;
 
     /* Global Typography */
     -fx-font-family: "Inter", "Segoe UI", Arial, sans-serif;
     -fx-font-size: 14px;
 }
 
-/* General Icon Styling - Restoring Purple Icons */
-.ikonli-font-icon {
-    -fx-fill: -fx-accent-color;
-    -fx-icon-color: -fx-accent-color;
+/* --- DIALOG & POPUP THEMING (UNDECORATED COMPATIBLE) --- */
+
+.dialog-pane {
+    -fx-background-color: -app-bg-main;
+    -fx-border-color: -app-accent; /* Purple border for undecorated popups */
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
 }
 
-/* * Metadata card values are optimized for long strings (Loras).
- * Forced wrapping prevents the layout from expanding horizontally.
- */
-.income-stat-value {
-    -fx-text-fill: -fx-accent-color;
-    -fx-font-size: 1.4em;
-    -fx-font-weight: bold;
-    -fx-wrap-text: true;
-    -fx-line-spacing: 2px;
-    /* Removed problematic lookup to fix console warnings */
+.dialog-pane > .container {
+    -fx-background-color: -app-bg-main;
 }
+
+.dialog-pane .label {
+    -fx-text-fill: -app-text-primary;
+}
+
+.dialog-pane:header .header-panel {
+    -fx-background-color: -app-bg-secondary;
+    -fx-padding: 20;
+}
+
+.dialog-pane:header .header-panel .label {
+    -fx-text-fill: -app-accent;
+    -fx-font-weight: bold;
+    -fx-font-size: 1.1em;
+}
+
+.dialog-pane .text-field {
+    -fx-background-color: -app-bg-secondary;
+    -fx-text-fill: -app-text-primary;
+    -fx-border-color: -app-border-subtle;
+    -fx-border-radius: 4;
+}
+
+.dialog-pane .button-bar .button {
+    -fx-background-color: #1e293b;
+    -fx-text-fill: #f8fafc;
+}
+
+.dialog-pane .button-bar .button:hover {
+    -fx-background-color: -app-accent;
+    -fx-text-fill: #ffffff;
+}
+
+/* --- SIDEBAR & NAVIGATION --- */
+
+.side-navigation {
+    -fx-background-color: -app-bg-secondary;
+    -fx-border-color: -app-border-subtle;
+    -fx-border-width: 0 1 0 0;
+}
+
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -app-text-muted;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: transparent;
+    -fx-padding: 12 15;
+}
+
+.nav-button:hover {
+    -fx-background-color: rgba(124, 77, 255, 0.08);
+    -fx-text-fill: -app-text-primary;
+}
+
+.nav-button-active {
+    -fx-background-color: rgba(124, 77, 255, 0.15);
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+    -fx-border-color: -app-accent;
+    -fx-border-width: 0 0 0 4; /* Left indigo accent bar */
+}
+
+.profile-area {
+    -fx-padding: 10 0 25 0; /* Increased top/bottom padding for the logo */
+    -fx-border-color: -app-border-subtle;
+    -fx-border-width: 0 0 1 0; /* Keeps the separation line */
+    -fx-margin: 0 0 15 0;
+}
+
+/* --- COMPONENTS & CARDS --- */
 
 .income-stats-box {
-    -fx-background-color: #1c212b;
+    -fx-background-color: -app-bg-card;
     -fx-background-radius: 8;
-    -fx-border-color: #2d333b;
+    -fx-border-color: -app-border-subtle;
     -fx-border-width: 1;
     -fx-padding: 15;
 }
 
-/* Drop zone with purple highlights */
+.income-stat-value {
+    -fx-text-fill: -app-accent;
+    -fx-font-size: 1.4em;
+    -fx-font-weight: bold;
+    -fx-wrap-text: true;
+}
+
 .drop-zone {
     -fx-background-color: rgba(124, 77, 255, 0.03);
     -fx-border-color: rgba(124, 77, 255, 0.4);
@@ -57,47 +132,14 @@
 }
 
 .drop-zone:hover, .drop-zone-active {
-    -fx-border-color: -fx-accent-color;
+    -fx-border-color: -app-accent;
     -fx-background-color: rgba(124, 77, 255, 0.1);
 }
 
-.drop-zone .ikonli-font-icon {
-    -fx-fill: -fx-accent-color;
-    -fx-icon-color: -fx-accent-color;
-}
-
-/* UI Structure Cleanup */
-.content-view {
-    -fx-padding: 30;
-}
-
-.content-title {
-    -fx-text-fill: #ffffff;
-    -fx-font-size: 1.8em;
-    -fx-font-weight: bold;
-    -fx-padding: 0 0 10 0;
-}
-
-.app-title {
-    -fx-text-fill: -fx-accent-color;
-    -fx-font-size: 1.2em;
-    -fx-font-weight: bold;
-}
-
-/* Standard Element Overrides for consistency */
-.label {
-    -fx-text-fill: -fx-text-color-primary;
-}
-
-/* Fix for Favorites View text cutting off in both ListViews and TableViews */
-.list-cell .label, .table-cell .label, .table-cell {
-    -fx-wrap-text: true;
-}
-
 .text-area {
-    -fx-control-inner-background: #151921;
-    -fx-text-fill: -fx-text-color-primary;
-    -fx-border-color: #2d333b;
+    -fx-control-inner-background: -app-bg-secondary;
+    -fx-text-fill: -app-text-primary;
+    -fx-border-color: -app-border-subtle;
 }
 
 .button {
@@ -105,16 +147,49 @@
     -fx-text-fill: #f8fafc;
     -fx-border-color: #334155;
     -fx-border-radius: 6;
-    -fx-cursor: hand;
 }
 
 .button:hover {
-    -fx-background-color: -fx-accent-color;
+    -fx-background-color: -app-accent;
     -fx-text-fill: #ffffff;
 }
 
-/* Ensure button icons turn white or keep accent on hover */
+.ikonli-font-icon {
+    -fx-fill: -app-accent;
+    -fx-icon-color: -app-accent;
+}
+
+/* Ensure icons turn white on active/hovered states */
+.nav-button-active .ikonli-font-icon,
 .button:hover .ikonli-font-icon {
     -fx-fill: #ffffff;
     -fx-icon-color: #ffffff;
+}
+
+/* --- LISTVIEW & FAVORITES STABILITY FIXES --- */
+
+.list-view {
+    -fx-background-color: transparent;
+    -fx-control-inner-background: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.list-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: -app-text-primary;
+    -fx-padding: 8 0; /* Vertical gap between cards */
+}
+
+/* Fix for invisible cards: Ensures card content remains visible within the cell */
+.list-cell:filled .income-stats-box {
+    -fx-opacity: 1.0;
+    -fx-background-color: -app-bg-card;
+}
+
+/* Stabilizes the view by hiding the horizontal scrollbar */
+.list-view .scroll-bar:horizontal {
+    -fx-scale-x: 0;
+    -fx-scale-y: 0;
+    -fx-opacity: 0;
 }

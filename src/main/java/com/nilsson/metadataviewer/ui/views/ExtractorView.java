@@ -8,25 +8,29 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.input.TransferMode;
 import javafx.scene.layout.*;
+import javafx.stage.Window;
 import org.kordamp.ikonli.fontawesome.FontAwesome;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.File;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+import javafx.stage.StageStyle;
 
-/**
- * Enhanced Extractor View with Image Preview and Auto-Wrapping Metadata Cards.
- * Fixed the "funky" layout by using managed widths and forced text wrapping.
- */
 public class ExtractorView extends ScrollPane {
     private final MetadataService service = new MetadataService();
+
     private final TextArea promptText = new TextArea();
+    private final TextArea negativePromptText = new TextArea();
 
     private final Label modelVal = new Label("-");
     private final Label samplerVal = new Label("-");
     private final Label stepsVal = new Label("-");
+    private final Label cfgVal = new Label("-");
+    private final Label seedVal = new Label("-");
     private final Label lorasVal = new Label("-");
 
     private final ImageView previewImageView = new ImageView();
@@ -40,8 +44,17 @@ public class ExtractorView extends ScrollPane {
         this.getStyleClass().add("content-view");
         this.setHbarPolicy(ScrollBarPolicy.NEVER);
 
-        VBox container = new VBox(25);
-        container.setPadding(new Insets(30));
+        // --- SCROLL SPEED ---
+        this.addEventFilter(ScrollEvent.SCROLL, event -> {
+            double deltaY = event.getDeltaY() * 4.0;
+            double height = this.getContent().getBoundsInLocal().getHeight();
+            double vValue = this.getVvalue();
+            this.setVvalue(vValue - deltaY / height);
+            event.consume();
+        });
+
+        VBox container = new VBox(15);
+        container.setPadding(new Insets(20, 30, 30, 30));
         container.setAlignment(Pos.TOP_CENTER);
 
         // 1. Header
@@ -50,61 +63,134 @@ public class ExtractorView extends ScrollPane {
 
         // 2. Drop & Preview Section
         HBox dropSection = new HBox(20);
-        dropSection.setAlignment(Pos.CENTER);
+        dropSection.setAlignment(Pos.TOP_CENTER);
 
         VBox dropZone = createDropZone();
         HBox.setHgrow(dropZone, Priority.ALWAYS);
 
         setupPreviewContainer();
-        dropSection.getChildren().addAll(dropZone, previewContainer);
 
-        // 3. Prompt Area
-        VBox pSection = new VBox(10);
-        Label pTitle = new Label("Prompt");
-        pTitle.getStyleClass().add("app-title");
-        promptText.setWrapText(true);
-        promptText.setEditable(false);
-        promptText.setPrefHeight(120);
-        pSection.getChildren().addAll(pTitle, promptText);
+        // Save button with the preview
+        VBox previewWrapper = new VBox(10);
+        previewWrapper.setAlignment(Pos.TOP_CENTER);
+        Button btnSave = createSaveButton();
+        btnSave.setMaxWidth(Double.MAX_VALUE);
+        previewWrapper.getChildren().addAll(previewContainer, btnSave);
 
-        // 4. Metadata Grid (Refactored to be more stable)
-        VBox statsWrapper = new VBox(15);
+        dropSection.getChildren().addAll(dropZone, previewWrapper);
 
-        HBox topRow = new HBox(15);
+        // 3. Prompt Areas
+        VBox promptsWrapper = new VBox(15);
+        VBox pSection = createPromptSection("Positive Prompt", promptText, 100);
+        VBox nSection = createPromptSection("Negative Prompt", negativePromptText, 60);
+        promptsWrapper.getChildren().addAll(pSection, nSection);
+
+        // 4. Metadata Grid
+        VBox statsWrapper = new VBox(12);
+
+        HBox row1 = new HBox(12);
         VBox modelCard = createStatCard("Model", modelVal, FontAwesome.CUBE);
         VBox samplerCard = createStatCard("Sampler / Scheduler", samplerVal, FontAwesome.SLIDERS);
         HBox.setHgrow(modelCard, Priority.ALWAYS);
         HBox.setHgrow(samplerCard, Priority.ALWAYS);
-        topRow.getChildren().addAll(modelCard, samplerCard);
+        row1.getChildren().addAll(modelCard, samplerCard);
 
-        HBox middleRow = new HBox(15);
+        HBox row2 = new HBox(12);
         VBox stepsCard = createStatCard("Steps", stepsVal, FontAwesome.TASKS);
+        VBox cfgCard = createStatCard("CFG Scale", cfgVal, FontAwesome.ADJUST);
+        VBox seedCard = createStatCard("Seed", seedVal, FontAwesome.KEY);
         HBox.setHgrow(stepsCard, Priority.ALWAYS);
-        middleRow.getChildren().addAll(stepsCard);
+        HBox.setHgrow(cfgCard, Priority.ALWAYS);
+        HBox.setHgrow(seedCard, Priority.ALWAYS);
+        row2.getChildren().addAll(stepsCard, cfgCard, seedCard);
 
         VBox loraCard = createStatCard("Loras Used", lorasVal, FontAwesome.PUZZLE_PIECE);
+        statsWrapper.getChildren().addAll(row1, row2, loraCard);
 
-        statsWrapper.getChildren().addAll(topRow, middleRow, loraCard);
-
-        // 5. Actions
-        HBox actions = createActions();
-
-        container.getChildren().addAll(title, dropSection, pSection, statsWrapper, actions);
+        container.getChildren().addAll(title, dropSection, promptsWrapper, statsWrapper);
         this.setContent(container);
+    }
+
+    private Button createSaveButton() {
+        Button fv = new Button("Save Favorite");
+        fv.setGraphic(new FontIcon(FontAwesome.STAR));
+        fv.getStyleClass().add("button");
+        fv.setOnAction(e -> {
+            if (lastData == null) return;
+
+            TextInputDialog tid = new TextInputDialog("Prompt Name");
+            tid.initStyle(StageStyle.UNDECORATED);
+            tid.setHeaderText("Add to Favorites Library");
+            tid.setContentText("Enter a name for this prompt:");
+
+            DialogPane dialogPane = tid.getDialogPane();
+            dialogPane.getStyleClass().add("custom-dialog");
+
+            if (this.getScene() != null) {
+                dialogPane.getStylesheets().addAll(this.getScene().getStylesheets());
+            }
+
+            // --- DRAGGING LOGIC ---
+            AtomicReference<Double> xOffset = new AtomicReference<>((double) 0);
+            AtomicReference<Double> yOffset = new AtomicReference<>((double) 0);
+
+            dialogPane.setOnMousePressed(event -> {
+                xOffset.set(event.getSceneX());
+                yOffset.set(event.getSceneY());
+            });
+
+            dialogPane.setOnMouseDragged(event -> {
+                Window window = dialogPane.getScene().getWindow();
+                window.setX(event.getScreenX() - xOffset.get());
+                window.setY(event.getScreenY() - yOffset.get());
+            });
+
+            tid.showAndWait().ifPresent(name -> {
+                FavoriteRegistry.getInstance().addFavorite(new FavoriteData(
+                        name, lastData.get("Prompt"), lastData.get("Model"),
+                        lastData.get("Steps"), lastData.get("Loras"),
+                        lastFile != null ? lastFile.getAbsolutePath() : null
+                ));
+            });
+        });
+        return fv;
+    }
+
+    private VBox createPromptSection(String title, TextArea area, int height) {
+        VBox section = new VBox(5);
+        HBox header = new HBox(10);
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        Label label = new Label(title);
+        label.getStyleClass().add("app-title");
+
+        Button copyBtn = new Button();
+        copyBtn.setGraphic(new FontIcon(FontAwesome.COPY));
+        copyBtn.getStyleClass().add("button");
+        copyBtn.setOnAction(e -> {
+            javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
+            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+            content.putString(area.getText());
+            clipboard.setContent(content);
+        });
+
+        header.getChildren().addAll(label, copyBtn);
+        area.setWrapText(true);
+        area.setEditable(false);
+        area.setPrefHeight(height);
+
+        section.getChildren().addAll(header, area);
+        return section;
     }
 
     private void setupPreviewContainer() {
         previewContainer.getStyleClass().add("income-stats-box");
         previewContainer.setPrefSize(160, 160);
         previewContainer.setMaxSize(160, 160);
-
         previewImageView.setFitWidth(140);
         previewImageView.setFitHeight(140);
         previewImageView.setPreserveRatio(true);
-
-        Label placeholder = new Label("PREVIEW");
-        placeholder.setStyle("-fx-text-fill: #475569; -fx-font-weight: bold;");
-        previewContainer.getChildren().addAll(placeholder, previewImageView);
+        previewContainer.getChildren().add(previewImageView);
     }
 
     private VBox createDropZone() {
@@ -134,62 +220,33 @@ public class ExtractorView extends ScrollPane {
     }
 
     private VBox createStatCard(String title, Label val, org.kordamp.ikonli.Ikon icon) {
-        VBox card = new VBox(8);
+        VBox card = new VBox(5);
         card.getStyleClass().add("income-stats-box");
-        card.setPadding(new Insets(15));
+        card.setPadding(new Insets(10, 15, 10, 15));
         card.setMaxWidth(Double.MAX_VALUE);
 
-        HBox header = new HBox(10, new FontIcon(icon), new Label(title));
+        HBox header = new HBox(8, new FontIcon(icon), new Label(title));
         header.setAlignment(Pos.CENTER_LEFT);
 
         val.getStyleClass().add("income-stat-value");
         val.setWrapText(true);
-        // Force wrap based on parent width
         val.maxWidthProperty().bind(card.widthProperty().subtract(30));
 
         card.getChildren().addAll(header, val);
         return card;
     }
 
-    private HBox createActions() {
-        Button cp = new Button("Copy Prompt");
-        cp.setGraphic(new FontIcon(FontAwesome.COPY));
-        cp.setOnAction(e -> {
-            javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
-            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
-            content.putString(promptText.getText());
-            clipboard.setContent(content);
-        });
-
-        Button fv = new Button("Save Favorite");
-        fv.setGraphic(new FontIcon(FontAwesome.STAR));
-        fv.setOnAction(e -> {
-            if (lastData == null) return;
-            TextInputDialog tid = new TextInputDialog("Prompt Name");
-            tid.showAndWait().ifPresent(name -> {
-                FavoriteRegistry.getInstance().addFavorite(new FavoriteData(
-                        name, lastData.get("Prompt"), lastData.get("Model"),
-                        lastData.get("Steps"), lastData.get("Loras"),
-                        lastFile != null ? lastFile.getAbsolutePath() : null
-                ));
-            });
-        });
-
-        HBox h = new HBox(15, cp, fv);
-        h.setAlignment(Pos.CENTER_RIGHT);
-        h.setPadding(new Insets(0, 0, 20, 0));
-        return h;
-    }
-
-    private void process(File f) {
+    public void process(File f) {
         this.lastFile = f;
         lastData = service.getExtractedData(f);
         promptText.setText(lastData.getOrDefault("Prompt", ""));
+        negativePromptText.setText(lastData.getOrDefault("Negative", "None"));
         modelVal.setText(lastData.getOrDefault("Model", "N/A"));
         samplerVal.setText(lastData.getOrDefault("Sampler", "N/A"));
         stepsVal.setText(lastData.getOrDefault("Steps", "N/A"));
+        cfgVal.setText(lastData.getOrDefault("CFG", "N/A"));
+        seedVal.setText(lastData.getOrDefault("Seed", "N/A"));
         lorasVal.setText(lastData.getOrDefault("Loras", "None"));
-
         try {
             previewImageView.setImage(new Image(f.toURI().toString(), 140, 140, true, true));
         } catch (Exception e) {

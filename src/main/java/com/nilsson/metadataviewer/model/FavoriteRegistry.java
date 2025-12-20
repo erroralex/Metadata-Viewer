@@ -25,9 +25,6 @@ public class FavoriteRegistry {
         this.favoritesList = loadFromDisk();
     }
 
-    /**
-     * The missing getInstance method to provide the singleton instance.
-     */
     public static FavoriteRegistry getInstance() {
         return SingletonHolder.INSTANCE;
     }
