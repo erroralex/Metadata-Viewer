@@ -52,7 +52,7 @@ The application follows a strict **Model-View-Service** architecture to ensure b
 
 ## ✨ Key Features
 
-* **Wide Compatibility:** Full support for **ComfyUI**, **SwarmUI**, **A1111**, **Forge**, **Reforge**, and **SD-Matrix**.
+* **Wide Compatibility:** Full support for **ComfyUI**, **SwarmUI**, **A1111**, **Forge**, **Reforge**, **Forge Neo** and **SD-Matrix**.
 * **Drag & Drop Workflow:** Instant extraction by dropping images directly into the portal.
 * **Favorites System:** Save generation parameters with automatic thumbnail generation for later use.
 * **Raw Inspector:** A dedicated raw JSON viewer for debugging complex or non-standard node structures.
@@ -65,6 +65,7 @@ The application follows a strict **Model-View-Service** architecture to ensure b
 To run the application locally:
 
 1.  **Clone the repository**
+   
 2.  **Build with Maven:**
     ```bash
     mvn clean install
