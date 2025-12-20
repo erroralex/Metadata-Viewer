@@ -5,7 +5,7 @@
 ![CSS](https://img.shields.io/badge/CSS-Obsidian_Indigo-1572B6?style=for-the-badge&logo=css3&logoColor=white)
 ![Jackson](https://img.shields.io/badge/Persistence-Jackson_JSON-2f2f2f?style=for-the-badge&logo=json&logoColor=white)
 
-A professional desktop application for extracting, managing, and storing generation parameters from AI-generated images. Designed specifically for high-performance workflows across all major AI interfaces.
+A professional and private desktop application for extracting, managing, and storing generation parameters from AI-generated images. Designed specifically for high-performance workflows across all major AI interfaces.
 
 This project demonstrates **layered architecture**, **recursive JSON parsing**, and **programmatic UI development** without the use of FXML.
 
