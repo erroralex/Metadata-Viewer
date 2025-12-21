@@ -1,6 +1,6 @@
 /* * ===================================================================================
  * METADATA VIEWER - MODERN DARK & PURPLE THEME
- * Version: 2.2 (Full Stability, Title Bar & Raw Viewer Update)
+ * Version: 2.5 (Ultimate Artifact Removal & Modern Warning Red)
  * ===================================================================================
  */
 
@@ -13,6 +13,7 @@
     -app-text-primary: #e2e8f0;
     -app-text-muted: #94a3b8;
     -app-border-subtle: #2d333b;
+    -app-warning-red: #ef4444;
 
     /* --- Global JavaFX Base Styles --- */
     -fx-background-color: -app-bg-main;
@@ -33,7 +34,7 @@
 .custom-title-bar {
     -fx-background-color: -app-bg-secondary;
     -fx-alignment: center-left;
-    -fx-padding: 0 10 0 0; /* Adds 10px padding to the right for a professional finish */
+    -fx-padding: 0 10 0 0; /* Ensures right-side gap for a clean finish */
 }
 
 .title-label {
@@ -46,67 +47,75 @@
 .window-button {
     -fx-background-color: transparent;
     -fx-text-fill: -app-text-muted;
+
+    /* THE FIX: Absolute flattening of radius and insets to remove corner triangles */
     -fx-background-radius: 0;
+    -fx-background-insets: 0;
+
     -fx-border-color: transparent;
     -fx-padding: 10 15;
+
+    /* Disables focus rings and traversability for a static, professional look */
+    -fx-focus-traversable: false;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
 }
 
 .window-button:hover {
     -fx-background-color: rgba(255, 255, 255, 0.1);
     -fx-text-fill: -app-text-primary;
+    -fx-background-radius: 0;
+    -fx-background-insets: 0;
 }
 
-/* Specific override for the close button to ensure it turns red on hover */
+/* Specific override for the Close Button using modern warning red (#ef4444) */
 .button.window-close:hover {
-    -fx-background-color: #e81123; /* Windows-style red */
+    -fx-background-color: -app-warning-red;
     -fx-text-fill: white;
+    -fx-background-radius: 0;
+    -fx-background-insets: 0;
 }
 
 /* * -----------------------------------------------------------------------------------
- * DIALOGS & POPUPS (UNDECORATED THEME)
+ * DIALOG & POPUP ARTIFACT REMOVAL
  * -----------------------------------------------------------------------------------
  */
 
 .dialog-pane {
     -fx-background-color: -app-bg-main;
+
+    /* THE FIX: Removes default layered backgrounds that cause corner triangles */
+    -fx-background-radius: 0;
+    -fx-background-insets: 0;
+
+    /* Clean custom border for undecorated modal state */
     -fx-border-color: -app-accent;
-    -fx-border-width: 1;
-    -fx-border-radius: 4;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 0;
 }
 
+/* Forces inner container to align with outer dialog-pane bounds */
 .dialog-pane > .container {
     -fx-background-color: -app-bg-main;
-}
-
-.dialog-pane .label {
-    -fx-text-fill: -app-text-primary;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
 }
 
 .dialog-pane:header .header-panel {
     -fx-background-color: -app-bg-secondary;
     -fx-padding: 20;
+    -fx-background-insets: 0;
 }
 
 .dialog-pane:header .header-panel .label {
     -fx-text-fill: -app-accent;
     -fx-font-weight: bold;
-    -fx-font-size: 1.1em;
 }
 
 .dialog-pane .text-field {
     -fx-background-color: -app-bg-secondary;
     -fx-text-fill: -app-text-primary;
     -fx-border-color: -app-border-subtle;
-}
-
-.dialog-pane .button-bar .button {
-    -fx-background-color: #1e293b;
-    -fx-text-fill: #f8fafc;
-}
-
-.dialog-pane .button-bar .button:hover {
-    -fx-background-color: -app-accent;
-    -fx-text-fill: #ffffff;
 }
 
 /* * -----------------------------------------------------------------------------------
@@ -137,13 +146,13 @@
     -fx-text-fill: #ffffff;
     -fx-font-weight: bold;
     -fx-border-color: -app-accent;
-    -fx-border-width: 0 0 0 4; /* Left-side indigo indicator bar */
+    -fx-border-width: 0 0 0 4; /* Left-side highlight bar */
 }
 
 .profile-area {
-    -fx-padding: 10 0 25 0; /* Padding for the logo area */
+    -fx-padding: 10 0 25 0;
     -fx-border-color: -app-border-subtle;
-    -fx-border-width: 0 0 1 0; /* Separation line */
+    -fx-border-width: 0 0 1 0;
     -fx-margin: 0 0 15 0;
 }
 
@@ -202,7 +211,6 @@
     -fx-icon-color: -app-accent;
 }
 
-/* Ensures icons turn white on highlighted button states */
 .nav-button-active .ikonli-font-icon,
 .button:hover .ikonli-font-icon {
     -fx-fill: #ffffff;
@@ -210,7 +218,7 @@
 }
 
 /* * -----------------------------------------------------------------------------------
- * LISTVIEW & FAVORITES STABILITY FIXES
+ * LISTVIEW & FAVORITES STABILITY
  * -----------------------------------------------------------------------------------
  */
 
@@ -218,22 +226,19 @@
     -fx-background-color: transparent;
     -fx-control-inner-background: transparent;
     -fx-background-insets: 0;
-    -fx-padding: 0;
 }
 
 .list-cell {
     -fx-background-color: transparent;
     -fx-text-fill: -app-text-primary;
-    -fx-padding: 8 0; /* Vertical gap between library cards */
+    -fx-padding: 8 0;
 }
 
-/* Forces cards inside the ListView to remain visible */
 .list-cell:filled .income-stats-box {
     -fx-opacity: 1.0;
     -fx-background-color: -app-bg-card;
 }
 
-/* Hides the horizontal scrollbar to prevent layout "jitter" */
 .list-view .scroll-bar:horizontal {
     -fx-scale-x: 0;
     -fx-scale-y: 0;
@@ -246,23 +251,15 @@
  */
 
 .custom-dialog {
-    -fx-background-color: -app-bg-secondary; /* Matches TitleBar and SideNav */
+    -fx-background-color: -app-bg-secondary;
     -fx-border-color: -app-accent;
     -fx-border-width: 1.5;
-    -fx-border-radius: 8;
-    -fx-background-radius: 8;
+    -fx-background-insets: 0; /* Ensures background matches title bar perfectly */
 }
 
 .custom-dialog .text-area {
-    -fx-control-inner-background: -app-bg-secondary; /* Unified dialog background */
+    -fx-control-inner-background: -app-bg-secondary;
     -fx-text-fill: -app-text-primary;
     -fx-border-color: -app-border-subtle;
-    -fx-border-radius: 4;
     -fx-font-family: 'Consolas', 'Monospace';
-    -fx-font-size: 13px;
-}
-
-.custom-dialog .content-title {
-    -fx-text-fill: -app-accent;
-    -fx-font-weight: bold;
 }

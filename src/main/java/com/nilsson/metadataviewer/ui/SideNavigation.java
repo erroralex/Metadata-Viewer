@@ -32,14 +32,13 @@ public class SideNavigation extends VBox {
         this.setSpacing(10);
         this.setPadding(new Insets(20));
 
-        // --- Logo Area ---
+        // Top Logo Area
         VBox logoArea = new VBox();
         logoArea.getStyleClass().add("profile-area");
         logoArea.setAlignment(Pos.CENTER);
         logoArea.setPadding(new Insets(0, 0, 20, 0));
 
         try {
-            // Ensure logo.png exists in src/main/resources
             String logoPath = getClass().getResource("/logo.png").toExternalForm();
             Image logoImg = new Image(logoPath);
             ImageView logoView = new ImageView(logoImg);
@@ -50,46 +49,62 @@ public class SideNavigation extends VBox {
 
             logoArea.getChildren().add(logoView);
         } catch (Exception e) {
-            // Fallback text logo if image file is missing
             Label fallbackLogo = new Label("METADATA VIEWER");
             fallbackLogo.getStyleClass().add("app-title");
             logoArea.getChildren().add(fallbackLogo);
         }
         this.getChildren().add(logoArea);
 
-        // --- Navigation Buttons ---
-
-        // 1. Extractor Button
+        // Navigation Buttons
         btnExtractor = createNavButton("Extractor", FontAwesome.DASHBOARD);
         btnExtractor.setOnAction(e -> {
             rootLayout.setContent(new ExtractorView());
             setActiveButton(btnExtractor);
         });
 
-        // 2. Favorites Button - Pass rootLayout to enable "View" jumps
         btnFavorites = createNavButton("Favorites", FontAwesome.STAR);
         btnFavorites.setOnAction(e -> {
             rootLayout.setContent(new FavoritesView(rootLayout));
             setActiveButton(btnFavorites);
         });
 
-        // Bottom Spacer and Exit Logic
+        // Bottom Spacer
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
 
+        // Lower Logo Area (Above Exit Button)
+        VBox lowerLogoArea = new VBox();
+        lowerLogoArea.setAlignment(Pos.CENTER);
+        lowerLogoArea.setPadding(new Insets(10, 0, 10, 0));
+
+        try {
+            String lowerLogoPath = getClass().getResource("/alx_logo.png").toExternalForm();
+            Image lowerLogoImg = new Image(lowerLogoPath);
+            ImageView lowerLogoView = new ImageView(lowerLogoImg);
+
+            lowerLogoView.setFitWidth(120); // Slightly smaller than the top logo
+            lowerLogoView.setPreserveRatio(true);
+            lowerLogoView.setSmooth(true);
+
+            // Reduce opacity for a subtle look
+            lowerLogoView.setOpacity(0.6);
+
+            lowerLogoArea.getChildren().add(lowerLogoView);
+        } catch (Exception e) {
+            // Silent catch if image is missing to prevent UI crash
+        }
+
+        // Exit Logic
         Button btnExit = createNavButton("Exit App", FontAwesome.POWER_OFF);
         btnExit.setOnAction(e -> System.exit(0));
 
-        this.getChildren().addAll(btnExtractor, btnFavorites, spacer, btnExit);
+        // Adding children in order: nav buttons -> spacer -> lower logo -> exit button
+        this.getChildren().addAll(btnExtractor, btnFavorites, spacer, lowerLogoArea, btnExit);
 
         // Default Active State
         setActiveButton(btnExtractor);
     }
 
-    /**
-     * Public method used by RootLayout to highlight the Extractor tab
-     * when jumping back from the Favorites library.
-     */
     public void highlightExtractor() {
         setActiveButton(btnExtractor);
     }
