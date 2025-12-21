@@ -34,10 +34,12 @@ public class CustomTitleBar extends HBox {
 
         // Window Controls
         Button minimizeBtn = new Button("—");
+        minimizeBtn.setFocusTraversable(false);
         minimizeBtn.getStyleClass().add("window-button");
         minimizeBtn.setOnAction(e -> primarystage.setIconified(true));
 
         Button closeBtn = new Button("✕");
+        closeBtn.setFocusTraversable(false);
         closeBtn.getStyleClass().addAll("window-button", "window-close");
         closeBtn.setOnAction(e -> {
             if (onExitCleanup != null) {
