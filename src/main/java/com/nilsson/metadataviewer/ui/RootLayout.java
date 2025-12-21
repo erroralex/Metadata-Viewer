@@ -1,10 +1,10 @@
 package com.nilsson.metadataviewer.ui;
 
+import com.nilsson.metadataviewer.model.FavoriteData;
 import com.nilsson.metadataviewer.ui.views.ExtractorView;
 import javafx.scene.Node;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
-import java.io.File;
 
 public class RootLayout extends BorderPane {
     private SideNavigation sideNav;
@@ -24,10 +24,10 @@ public class RootLayout extends BorderPane {
     }
 
     // Helper to jump to Extractor and load a specific file.
-    public void navigateToExtractor(File file) {
+    public void navigateToExtractor(FavoriteData favorite) {
         ExtractorView view = new ExtractorView();
-        if (file != null && file.exists()) {
-            view.process(file);
+        if (favorite != null) {
+            view.populateFromFavorite(favorite);
         }
         setContent(view);
         sideNav.highlightExtractor();
