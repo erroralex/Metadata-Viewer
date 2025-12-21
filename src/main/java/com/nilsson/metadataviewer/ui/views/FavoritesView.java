@@ -16,15 +16,14 @@ import org.kordamp.ikonli.javafx.FontIcon;
 import java.io.File;
 
 /**
- * Modern Favorites View using a card-based ListView.
- * Optimized for layout stability and navigation back to the Extractor.
+ * Favorites View using a card-based ListView.
+ * Updated: Open Location feature and full metadata navigation.
  */
 public class FavoritesView extends VBox {
 
     private final ListView<FavoriteData> listView = new ListView<>();
     private final RootLayout rootLayout;
 
-    // Constructor accepts RootLayout to enable jumping back to the Extractor view
     public FavoritesView(RootLayout rootLayout) {
         this.rootLayout = rootLayout;
         this.setPadding(new Insets(30));
@@ -52,10 +51,7 @@ public class FavoritesView extends VBox {
     private void setupListView() {
         listView.setCellFactory(param -> new FavoriteCardCell());
         listView.getStyleClass().add("list-view");
-
-        // Transparent background to see the VBox color
         listView.setStyle("-fx-background-color: transparent; -fx-control-inner-background: transparent;");
-
         refresh();
     }
 
@@ -63,7 +59,6 @@ public class FavoritesView extends VBox {
         listView.setItems(FXCollections.observableArrayList(FavoriteRegistry.getInstance().getFavorites()));
     }
 
-    // Custom ListCell that renders each favorite as a stable, wrapping card.
     private class FavoriteCardCell extends ListCell<FavoriteData> {
         private final VBox root = new VBox(10);
         private final HBox header = new HBox(15);
@@ -76,48 +71,41 @@ public class FavoritesView extends VBox {
         private final Label promptLabel = new Label();
 
         private final Button viewBtn = new Button();
+        private final Button folderBtn = new Button(); // NEW
         private final Button copyBtn = new Button();
         private final Button deleteBtn = new Button();
 
         public FavoriteCardCell() {
-
-            // Card styling with stability constraints
             root.getStyleClass().add("income-stats-box");
             root.setPadding(new Insets(15));
             root.setMaxWidth(Double.MAX_VALUE);
-            root.setMinWidth(0);
-
             this.setStyle("-fx-background-color: transparent; -fx-padding: 5 0;");
 
-            // --- Header Section ---
             nameLabel.getStyleClass().add("app-title");
             Region spacer = new Region();
             HBox.setHgrow(spacer, Priority.ALWAYS);
 
-            // Action Buttons
             viewBtn.getStyleClass().add("button");
             viewBtn.setGraphic(new FontIcon(FontAwesome.EXTERNAL_LINK));
             viewBtn.setTooltip(new Tooltip("View in Extractor"));
 
+            folderBtn.getStyleClass().add("button"); // NEW
+            folderBtn.setGraphic(new FontIcon(FontAwesome.FOLDER_OPEN));
+            folderBtn.setTooltip(new Tooltip("Open Thumbnail Location"));
+
             copyBtn.getStyleClass().add("button");
             copyBtn.setGraphic(new FontIcon(FontAwesome.COPY));
-            copyBtn.setTooltip(new Tooltip("Copy Prompt"));
 
             deleteBtn.getStyleClass().addAll("button", "exit-button");
             deleteBtn.setGraphic(new FontIcon(FontAwesome.TRASH));
-            deleteBtn.setTooltip(new Tooltip("Remove Favorite"));
 
-            HBox actions = new HBox(10, viewBtn, copyBtn, deleteBtn);
+            HBox actions = new HBox(10, viewBtn, folderBtn, copyBtn, deleteBtn);
             actions.setAlignment(Pos.CENTER_RIGHT);
             header.getChildren().addAll(nameLabel, spacer, actions);
-            header.setAlignment(Pos.CENTER_LEFT);
 
-            // --- Body Section (Thumbnail + Metadata) ---
             StackPane thumbWrapper = new StackPane(thumbnail);
             thumbWrapper.setPrefSize(80, 80);
-            thumbWrapper.setMinSize(80, 80);
             thumbWrapper.setStyle("-fx-background-color: #0b0e14; -fx-background-radius: 6;");
-
             thumbnail.setFitWidth(75);
             thumbnail.setFitHeight(75);
             thumbnail.setPreserveRatio(true);
@@ -126,16 +114,11 @@ public class FavoritesView extends VBox {
             promptLabel.getStyleClass().add("label");
             promptLabel.setWrapText(true);
             promptLabel.setStyle("-fx-text-fill: #94a3b8; -fx-font-size: 13px;");
-
-            // Strict binding to prevent horizontal growth during scroll
             promptLabel.maxWidthProperty().bind(root.widthProperty().subtract(140));
-            promptLabel.minWidthProperty().bind(root.widthProperty().subtract(140));
 
             info.getChildren().addAll(modelLabel, promptLabel);
             HBox.setHgrow(info, Priority.ALWAYS);
-
             body.getChildren().addAll(thumbWrapper, info);
-            body.setAlignment(Pos.TOP_LEFT);
 
             root.getChildren().addAll(header, body);
         }
@@ -150,27 +133,29 @@ public class FavoritesView extends VBox {
                 modelLabel.setText("Model: " + item.getModel());
                 promptLabel.setText(item.getPrompt());
 
-                // Thumbnail & Navigation Logic
-                if (item.getImagePath() != null) {
-                    File imgFile = new File(item.getImagePath());
-                    if (imgFile.exists()) {
-                        thumbnail.setImage(new Image(imgFile.toURI().toString(), 80, 80, true, true));
-                        viewBtn.setDisable(false);
-                        viewBtn.setOnAction(e -> rootLayout.navigateToExtractor(imgFile));
+                if (item.getThumbnailPath() != null) {
+                    File thumbFile = new File(item.getThumbnailPath());
+                    if (thumbFile.exists()) {
+                        thumbnail.setImage(new Image(thumbFile.toURI().toString(), 80, 80, true, true));
                     } else {
                         thumbnail.setImage(null);
-                        viewBtn.setDisable(true);
                     }
-                } else {
-                    thumbnail.setImage(null);
-                    viewBtn.setDisable(true);
                 }
 
+                viewBtn.setOnAction(e -> rootLayout.navigateToExtractor(item));
+
+                folderBtn.setOnAction(e -> {
+                    if (item.getThumbnailPath() != null) {
+                        try {
+                            java.awt.Desktop.getDesktop().open(new File(item.getThumbnailPath()).getParentFile());
+                        } catch (Exception ex) { ex.printStackTrace(); }
+                    }
+                });
+
                 copyBtn.setOnAction(e -> {
-                    final javafx.scene.input.Clipboard cb = javafx.scene.input.Clipboard.getSystemClipboard();
                     final javafx.scene.input.ClipboardContent c = new javafx.scene.input.ClipboardContent();
                     c.putString(item.getPrompt());
-                    cb.setContent(c);
+                    javafx.scene.input.Clipboard.getSystemClipboard().setContent(c);
                 });
 
                 deleteBtn.setOnAction(e -> {

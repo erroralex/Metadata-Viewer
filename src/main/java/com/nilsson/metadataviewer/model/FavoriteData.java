@@ -3,43 +3,57 @@ package com.nilsson.metadataviewer.model;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-// POJO for storing a favorited metadata prompt with image reference.
 public class FavoriteData {
     private String id;
     private String name;
     private String prompt;
+    private String negative;
     private String model;
+    private String sampler;
     private String steps;
+    private String cfg;
+    private String seed;
     private String loras;
-    private String imagePath; // New field for thumbnail support
+    private String raw;
+    private String thumbnailPath;
+    private String originalPath;
     private String timestamp;
 
     public FavoriteData() {}
 
-    public FavoriteData(String name, String prompt, String model, String steps, String loras, String imagePath) {
+    public FavoriteData(String name, String prompt, String negative, String model, String sampler,
+                        String steps, String cfg, String seed, String loras, String raw,
+                        String originalPath) {
         this.id = UUID.randomUUID().toString();
         this.name = name;
         this.prompt = prompt;
+        this.negative = negative;
         this.model = model;
+        this.sampler = sampler;
         this.steps = steps;
+        this.cfg = cfg;
+        this.seed = seed;
         this.loras = loras;
-        this.imagePath = imagePath;
+        this.raw = raw;
+        this.originalPath = originalPath;
         this.timestamp = LocalDateTime.now().toString();
     }
 
-    // Getters and Setters
+    // Getters and Setters for all fields (id, name, prompt, negative, model, sampler, steps, cfg, seed, loras, raw, thumbnailPath, originalPath, timestamp)
     public String getId() { return id; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getPrompt() { return prompt; }
-    public void setPrompt(String prompt) { this.prompt = prompt; }
+    public String getNegative() { return negative; }
     public String getModel() { return model; }
-    public void setModel(String model) { this.model = model; }
+    public String getSampler() { return sampler; }
     public String getSteps() { return steps; }
-    public void setSteps(String steps) { this.steps = steps; }
+    public String getCfg() { return cfg; }
+    public String getSeed() { return seed; }
     public String getLoras() { return loras; }
-    public void setLoras(String loras) { this.loras = loras; }
-    public String getImagePath() { return imagePath; }
-    public void setImagePath(String imagePath) { this.imagePath = imagePath; }
+    public String getRaw() { return raw; }
+    public String getThumbnailPath() { return thumbnailPath; }
+    public void setThumbnailPath(String path) { this.thumbnailPath = path; }
+    public String getOriginalPath() { return originalPath; }
     public String getTimestamp() { return timestamp; }
 }
