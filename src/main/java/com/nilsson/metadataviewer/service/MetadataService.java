@@ -125,30 +125,28 @@ public class MetadataService {
                 String key = entry.getKey().toLowerCase();
                 JsonNode value = entry.getValue();
 
-                // 1. PRIMARY MODEL DETECTION (High Priority)
-                // Keys like 'unet_name' and 'ckpt_name' are the true models.
+                // 1. PRIMARY MODEL DETECTION (Added 'model' for SwarmUI)
                 boolean isTrueModelKey = key.equals("ckpt_name") ||
                         key.equals("unet_name") ||
                         key.equals("model_name") ||
                         key.contains("checkpoint") ||
-                        key.equals("model_file");
+                        key.equals("model_file") ||
+                        key.equals("model"); // Added for SUI
 
                 if (isTrueModelKey && value.isTextual()) {
                     String modelName = value.asText();
                     if (modelName.length() > 4 && !modelName.contains("{")) {
-                        // Always set/overwrite if it's a true model
                         results.put("Model", modelName);
                     }
                 }
 
-                // 2. VAE DETECTION (Low Priority Fallback)
-                // Only set VAE as 'Model' if no true model has been found yet.
+                // 2. VAE DETECTION
                 else if (key.equals("vae_name") && value.isTextual() && !results.containsKey("Model")) {
                     results.put("Model", value.asText());
                 }
 
-                // 3. SAMPLER & SCHEDULER
-                else if (key.equals("sampler_name") && value.isTextual()) {
+                // 3. SAMPLER & SCHEDULER (Added 'sampler' for SwarmUI)
+                else if ((key.equals("sampler_name") || key.equals("sampler")) && value.isTextual()) {
                     String sampler = value.asText();
                     String scheduler = node.has("scheduler") ? node.get("scheduler").asText() : "";
                     results.put("Sampler", scheduler.isEmpty() ? sampler : sampler + " (" + scheduler + ")");
@@ -165,18 +163,21 @@ public class MetadataService {
                     results.put("CFG", value.asText());
                 }
 
-                // 5. PROMPT DETECTION (Positive vs Negative)
-                else if (key.equals("text") && value.isTextual()) {
+                // 5. PROMPT DETECTION (Added 'prompt' and 'negativeprompt' for SwarmUI)
+                else if ((key.equals("text") || key.equals("prompt")) && value.isTextual()) {
                     String t = value.asText();
-                    if (t.length() > 10 && !t.startsWith("{") && !t.startsWith("[")) {
-                        // Use metadata title to distinguish Positive from Negative
-                        if (node.has("_meta") && node.get("_meta").has("title") &&
-                                node.get("_meta").get("title").asText().toLowerCase().contains("negative")) {
+                    if (t.length() > 5 && !t.startsWith("{") && !t.startsWith("[")) {
+                        // Check if it's explicitly marked as negative or if the key is 'negativeprompt'
+                        if (key.equals("negativeprompt") || (node.has("_meta") && node.get("_meta").has("title") &&
+                                node.get("_meta").get("title").asText().toLowerCase().contains("negative"))) {
                             results.put("Negative", t);
                         } else if (!results.containsKey("Prompt")) {
                             results.put("Prompt", t);
                         }
                     }
+                }
+                else if (key.equals("negativeprompt") && value.isTextual()) {
+                    results.put("Negative", value.asText());
                 }
 
                 // 6. LORA TRACKING

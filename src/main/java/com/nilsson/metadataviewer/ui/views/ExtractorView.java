@@ -19,10 +19,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * Main Extraction View featuring a Drag & Drop zone and metadata cards.
- * Updated: Themed dialogs, metadata restoration, and persistent thumbnails.
- */
 public class ExtractorView extends ScrollPane {
     private final MetadataService service = new MetadataService();
 
@@ -51,11 +47,9 @@ public class ExtractorView extends ScrollPane {
         container.setPadding(new Insets(20, 30, 30, 30));
         container.setAlignment(Pos.TOP_CENTER);
 
-        // Header
         Label title = new Label("AI Metadata Extractor");
         title.getStyleClass().add("content-title");
 
-        // Drop & Preview Section
         HBox dropSection = new HBox(20);
         dropSection.setAlignment(Pos.TOP_CENTER);
 
@@ -70,14 +64,12 @@ public class ExtractorView extends ScrollPane {
 
         dropSection.getChildren().addAll(dropZone, previewWrapper);
 
-        // Prompt Areas
         VBox promptsWrapper = new VBox(15);
         promptsWrapper.getChildren().addAll(
                 createPromptSection("Positive Prompt", promptText, 100),
                 createPromptSection("Negative Prompt", negativePromptText, 60)
         );
 
-        // Metadata Grid
         VBox statsWrapper = new VBox(12);
         HBox row1 = new HBox(12, createStatCard("Model", modelVal, FontAwesome.CUBE), createStatCard("Sampler", samplerVal, FontAwesome.SLIDERS));
         HBox row2 = new HBox(12, createStatCard("Steps", stepsVal, FontAwesome.TASKS), createStatCard("CFG Scale", cfgVal, FontAwesome.ADJUST), createStatCard("Seed", seedVal, FontAwesome.KEY));
@@ -88,8 +80,6 @@ public class ExtractorView extends ScrollPane {
         container.getChildren().addAll(title, dropSection, promptsWrapper, statsWrapper);
         this.setContent(container);
     }
-
-    // Restoration Logic: Populates the extractor from a saved library entry.
 
     public void populateFromFavorite(FavoriteData fav) {
         this.lastData = new HashMap<>();
@@ -213,12 +203,30 @@ public class ExtractorView extends ScrollPane {
 
     private VBox createPromptSection(String title, TextArea area, int height) {
         VBox section = new VBox(5);
+        HBox header = new HBox(10);
+        header.setAlignment(Pos.CENTER_LEFT);
+
         Label label = new Label(title);
         label.getStyleClass().add("app-title");
+
+        Button copyBtn = new Button();
+        copyBtn.setGraphic(new FontIcon(FontAwesome.COPY));
+        copyBtn.getStyleClass().add("button");
+        copyBtn.setTooltip(new Tooltip("Copy to Clipboard"));
+
+        copyBtn.setOnAction(e -> {
+            javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
+            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+            content.putString(area.getText());
+            clipboard.setContent(content);
+        });
+
+        header.getChildren().addAll(label, copyBtn);
         area.setWrapText(true);
         area.setEditable(false);
         area.setPrefHeight(height);
-        section.getChildren().addAll(label, area);
+
+        section.getChildren().addAll(header, area);
         return section;
     }
 
