@@ -1,10 +1,11 @@
 /* * ===================================================================================
- * METADATA VIEWER - MODERN DARK & PURPLE THEME (FULL UPDATED VERSION)
+ * METADATA VIEWER - MODERN DARK & PURPLE THEME
+ * Version: 2.2 (Full Stability, Title Bar & Raw Viewer Update)
  * ===================================================================================
  */
 
 .root {
-    /* Theme Color Variables */
+    /* --- Theme Color Variables --- */
     -app-bg-main: #0b0e14;
     -app-bg-secondary: #151921;
     -app-bg-card: #1c212b;
@@ -13,22 +14,62 @@
     -app-text-muted: #94a3b8;
     -app-border-subtle: #2d333b;
 
-    /* Apply Primary Background */
+    /* --- Global JavaFX Base Styles --- */
     -fx-background-color: -app-bg-main;
     -fx-base: -app-bg-main;
     -fx-accent: -app-accent;
     -fx-default-button: -app-accent;
 
-    /* Global Typography */
+    /* --- Typography --- */
     -fx-font-family: "Inter", "Segoe UI", Arial, sans-serif;
     -fx-font-size: 14px;
 }
 
-/* --- DIALOG & POPUP THEMING (UNDECORATED COMPATIBLE) --- */
+/* * -----------------------------------------------------------------------------------
+ * CUSTOM TITLE BAR & WINDOW CONTROLS
+ * -----------------------------------------------------------------------------------
+ */
+
+.custom-title-bar {
+    -fx-background-color: -app-bg-secondary;
+    -fx-alignment: center-left;
+    -fx-padding: 0 10 0 0; /* Adds 10px padding to the right for a professional finish */
+}
+
+.title-label {
+    -fx-text-fill: -app-accent;
+    -fx-font-weight: bold;
+    -fx-font-size: 1.1em;
+    -fx-padding: 0 0 0 15;
+}
+
+.window-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -app-text-muted;
+    -fx-background-radius: 0;
+    -fx-border-color: transparent;
+    -fx-padding: 10 15;
+}
+
+.window-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.1);
+    -fx-text-fill: -app-text-primary;
+}
+
+/* Specific override for the close button to ensure it turns red on hover */
+.button.window-close:hover {
+    -fx-background-color: #e81123; /* Windows-style red */
+    -fx-text-fill: white;
+}
+
+/* * -----------------------------------------------------------------------------------
+ * DIALOGS & POPUPS (UNDECORATED THEME)
+ * -----------------------------------------------------------------------------------
+ */
 
 .dialog-pane {
     -fx-background-color: -app-bg-main;
-    -fx-border-color: -app-accent; /* Purple border for undecorated popups */
+    -fx-border-color: -app-accent;
     -fx-border-width: 1;
     -fx-border-radius: 4;
 }
@@ -56,7 +97,6 @@
     -fx-background-color: -app-bg-secondary;
     -fx-text-fill: -app-text-primary;
     -fx-border-color: -app-border-subtle;
-    -fx-border-radius: 4;
 }
 
 .dialog-pane .button-bar .button {
@@ -69,7 +109,10 @@
     -fx-text-fill: #ffffff;
 }
 
-/* --- SIDEBAR & NAVIGATION --- */
+/* * -----------------------------------------------------------------------------------
+ * SIDEBAR & NAVIGATION
+ * -----------------------------------------------------------------------------------
+ */
 
 .side-navigation {
     -fx-background-color: -app-bg-secondary;
@@ -81,8 +124,6 @@
     -fx-background-color: transparent;
     -fx-text-fill: -app-text-muted;
     -fx-background-radius: 8;
-    -fx-border-radius: 8;
-    -fx-border-color: transparent;
     -fx-padding: 12 15;
 }
 
@@ -96,17 +137,20 @@
     -fx-text-fill: #ffffff;
     -fx-font-weight: bold;
     -fx-border-color: -app-accent;
-    -fx-border-width: 0 0 0 4; /* Left indigo accent bar */
+    -fx-border-width: 0 0 0 4; /* Left-side indigo indicator bar */
 }
 
 .profile-area {
-    -fx-padding: 10 0 25 0; /* Increased top/bottom padding for the logo */
+    -fx-padding: 10 0 25 0; /* Padding for the logo area */
     -fx-border-color: -app-border-subtle;
-    -fx-border-width: 0 0 1 0; /* Keeps the separation line */
+    -fx-border-width: 0 0 1 0; /* Separation line */
     -fx-margin: 0 0 15 0;
 }
 
-/* --- COMPONENTS & CARDS --- */
+/* * -----------------------------------------------------------------------------------
+ * CORE COMPONENTS & CARDS
+ * -----------------------------------------------------------------------------------
+ */
 
 .income-stats-box {
     -fx-background-color: -app-bg-card;
@@ -120,7 +164,6 @@
     -fx-text-fill: -app-accent;
     -fx-font-size: 1.4em;
     -fx-font-weight: bold;
-    -fx-wrap-text: true;
 }
 
 .drop-zone {
@@ -136,12 +179,6 @@
     -fx-background-color: rgba(124, 77, 255, 0.1);
 }
 
-.text-area {
-    -fx-control-inner-background: -app-bg-secondary;
-    -fx-text-fill: -app-text-primary;
-    -fx-border-color: -app-border-subtle;
-}
-
 .button {
     -fx-background-color: #1e293b;
     -fx-text-fill: #f8fafc;
@@ -154,19 +191,28 @@
     -fx-text-fill: #ffffff;
 }
 
+.text-area {
+    -fx-control-inner-background: -app-bg-secondary;
+    -fx-text-fill: -app-text-primary;
+    -fx-border-color: -app-border-subtle;
+}
+
 .ikonli-font-icon {
     -fx-fill: -app-accent;
     -fx-icon-color: -app-accent;
 }
 
-/* Ensure icons turn white on active/hovered states */
+/* Ensures icons turn white on highlighted button states */
 .nav-button-active .ikonli-font-icon,
 .button:hover .ikonli-font-icon {
     -fx-fill: #ffffff;
     -fx-icon-color: #ffffff;
 }
 
-/* --- LISTVIEW & FAVORITES STABILITY FIXES --- */
+/* * -----------------------------------------------------------------------------------
+ * LISTVIEW & FAVORITES STABILITY FIXES
+ * -----------------------------------------------------------------------------------
+ */
 
 .list-view {
     -fx-background-color: transparent;
@@ -178,30 +224,45 @@
 .list-cell {
     -fx-background-color: transparent;
     -fx-text-fill: -app-text-primary;
-    -fx-padding: 8 0; /* Vertical gap between cards */
+    -fx-padding: 8 0; /* Vertical gap between library cards */
 }
 
-/* Fix for invisible cards: Ensures card content remains visible within the cell */
+/* Forces cards inside the ListView to remain visible */
 .list-cell:filled .income-stats-box {
     -fx-opacity: 1.0;
     -fx-background-color: -app-bg-card;
 }
 
-/* Stabilizes the view by hiding the horizontal scrollbar */
+/* Hides the horizontal scrollbar to prevent layout "jitter" */
 .list-view .scroll-bar:horizontal {
     -fx-scale-x: 0;
     -fx-scale-y: 0;
     -fx-opacity: 0;
 }
 
-.custom-dialog .text-area {
-    -fx-control-inner-background: #0b0e14; /* Darker background for code */
-    -fx-text-fill: -app-accent;           /* Purple text for the raw JSON */
-    -fx-border-color: -app-border-subtle;
-    -fx-border-radius: 4;
+/* * -----------------------------------------------------------------------------------
+ * SPECIALIZED VIEWER (RAW JSON DIALOG)
+ * -----------------------------------------------------------------------------------
+ */
+
+.custom-dialog {
+    -fx-background-color: -app-bg-secondary; /* Matches TitleBar and SideNav */
+    -fx-border-color: -app-accent;
+    -fx-border-width: 1.5;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
 }
 
-/* Ensure the code scrollbar is subtle */
-.custom-dialog .text-area .scroll-pane {
-    -fx-background-color: transparent;
+.custom-dialog .text-area {
+    -fx-control-inner-background: -app-bg-secondary; /* Unified dialog background */
+    -fx-text-fill: -app-text-primary;
+    -fx-border-color: -app-border-subtle;
+    -fx-border-radius: 4;
+    -fx-font-family: 'Consolas', 'Monospace';
+    -fx-font-size: 13px;
+}
+
+.custom-dialog .content-title {
+    -fx-text-fill: -app-accent;
+    -fx-font-weight: bold;
 }

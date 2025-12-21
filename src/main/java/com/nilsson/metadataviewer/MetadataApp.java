@@ -15,7 +15,7 @@ import javafx.stage.StageStyle;
 public class MetadataApp extends Application {
 
     private static final int WIDTH = 1280;
-    private static final int HEIGHT = 920;
+    private static final int HEIGHT = 1024;
 
     @Override
     public void start(Stage primaryStage) {
@@ -45,7 +45,8 @@ public class MetadataApp extends Application {
             }
 
             primaryStage.setScene(scene);
-            primaryStage.setTitle("Metadata Viewer - AI Extractor");
+            primaryStage.setTitle("Metadata Extractor by ALX");
+            primaryStage.getIcons().add(new javafx.scene.image.Image(getClass().getResource("/icon.png").toExternalForm()));
             primaryStage.show();
 
         } catch (Exception e) {
