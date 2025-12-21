@@ -101,6 +101,10 @@ src/main/java/com/nilsson/metadataviewer
 
 ## 📜 License
 
-This project is distributed under the **MIT License**.
+This project is open-source and available under the **MIT License**. You are free to use, modify, and distribute this software in both personal and commercial projects.
+
+---
+Copyright (c) 2025 Alexander Nilsson
+
 
 ---
