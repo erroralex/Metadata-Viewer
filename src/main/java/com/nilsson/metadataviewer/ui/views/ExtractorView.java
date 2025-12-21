@@ -133,6 +133,7 @@ public class ExtractorView extends ScrollPane {
 
             DialogPane pane = dialog.getDialogPane();
             pane.getStyleClass().add("custom-dialog");
+            pane.setStyle("-fx-background-color: #151921;");
             if (this.getScene() != null) {
                 pane.getStylesheets().addAll(this.getScene().getStylesheets());
             }
