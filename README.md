@@ -71,6 +71,15 @@ Distributed under the **MIT License**. Free for personal and commercial use.
 
 ---
 
+## 💖 Support the Project
+
+If the **AI Metadata Viewer** has streamlined your workflow, consider supporting its ongoing development. Your contributions help maintain compatibility with new AI platforms and node structures.
+
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-GitHub-ea4aaa?style=for-the-badge&logo=github-sponsors)](https://github.com/sponsors/your-username)
+[![Ko-fi](https://img.shields.io/badge/Ko--fi-F16061?style=for-the-badge&logo=ko-fi&logoColor=white)](https://ko-fi.com/error_alex)
+
+---
+
 <p align="center">
   <b>Developed by</b><br>
   <img src="src/main/resources/alx_logo.png" width="120" alt="Alexander Nilsson Logo"><br>
