@@ -31,7 +31,7 @@ A high-performance JavaFX desktop application designed to unify generation metad
 
 ## ✨ Key Features
 
-* **Universal Compatibility:** Full support for **ComfyUI**, **SwarmUI**, **A1111**, **Forge**, **Reforge**, **Forge Neo**, and **SD-Matrix**.
+* **Universal Compatibility:** Full support for **ComfyUI**, **SwarmUI**, **A1111**, **Forge**, **Reforge**, **Forge Neo**, **InvokeAI**, **NovelAI** and **SD-Matrix**.
 * **Deep-Recursive Parsing:** Aggressive extraction engine that identifies models, samplers, and prompts buried within complex, nested JSON node graphs.
 * **Privacy-First Persistence:** All generation data and thumbnails are stored locally in human-readable JSON; your workflows never leave your machine.
 * **Developer-Centric UI:** A custom-coded "Obsidian & Indigo" theme featuring a **Raw Metadata Inspector** for debugging non-standard node outputs.
