@@ -15,31 +15,35 @@ public class CommonStrategy implements MetadataStrategy {
         if (key.equals("steps") && !results.containsKey("Steps")) {
             results.put("Steps", text);
         }
-
-        // 2. Seed (Handle both 'seed' and 'noise_seed')
+        // 2. Seed
         else if ((key.equals("seed") || key.equals("noise_seed")) && !results.containsKey("Seed")) {
             results.put("Seed", text);
         }
-
-        // 3. CFG Scale
+        // 3. CFG
         else if ((key.equals("cfg") || key.equals("cfgscale")) && !results.containsKey("CFG")) {
             results.put("CFG", text);
         }
 
-        // 4. LoRA
+        // 4. Width & Height (for ComfyUI/Swarm)
+        else if (key.equals("width") && !results.containsKey("Width")) {
+            results.put("Width", text);
+        }
+        else if (key.equals("height") && !results.containsKey("Height")) {
+            results.put("Height", text);
+        }
+
+        // 5. LoRA
         else if (key.contains("lora_name")) {
             String existing = results.getOrDefault("Loras", "");
             if (!existing.contains(text)) {
                 results.put("Loras", existing.isEmpty() ? text : existing + ", " + text);
             }
         }
-
-        // 5. Hires / Upscale
+        // 6. Hires
         else if (key.equals("upscale_by") || key.equals("upscale_method")) {
             results.put("Hires. fix", "Enabled (" + text + "x)");
         }
-
-        // 6. ControlNet
+        // 7. ControlNet
         else if (key.contains("control_net") || key.contains("controlnet")) {
             String existing = results.getOrDefault("ControlNet", "");
             if (!existing.contains(text)) {

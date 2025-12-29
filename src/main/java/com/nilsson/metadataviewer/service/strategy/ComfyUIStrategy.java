@@ -10,7 +10,7 @@ public class ComfyUIStrategy implements MetadataStrategy {
         if (!value.isTextual()) return;
         String text = value.asText();
 
-        // 1. Detect Models (Checkpoints, UNETs, etc.)
+        // 1. Detect Models
         if (isComfyModelKey(key) && text.length() > 4 && !text.contains("{")) {
             results.put("Model", text);
         }
@@ -25,13 +25,35 @@ public class ComfyUIStrategy implements MetadataStrategy {
             results.put("Sampler", scheduler.isEmpty() ? text : text + " (" + scheduler + ")");
         }
 
-        // 3. Prompts (Node text inputs)
+        // 3. Prompts
         else if (key.equals("text") && text.length() > 5 && !text.startsWith("{")) {
             if (isNegativeNode(parentNode)) {
                 results.put("Negative", text);
             } else if (!results.containsKey("Prompt")) {
                 results.put("Prompt", text);
             }
+        }
+
+        // 4. Custom LoRA Loader Support (Power Lora Loader / rgthree)
+        // Structure: { "lora": "Name.safetensors", "on": true, "strength": 1 }
+        else if (key.equals("lora")) {
+            // Check if 'on' is present and true (or missing, assuming on)
+            boolean isOn = !parentNode.has("on") || parentNode.get("on").asBoolean();
+            if (isOn) {
+                addLora(results, text);
+            }
+        }
+    }
+
+    private void addLora(Map<String, String> results, String loraName) {
+        // Clean up extension
+        String cleanName = loraName.replace(".safetensors", "").replace(".pt", "");
+        String existing = results.getOrDefault("Loras", "");
+
+        if (existing.isEmpty() || existing.equals("None")) {
+            results.put("Loras", cleanName);
+        } else if (!existing.contains(cleanName)) {
+            results.put("Loras", existing + ", " + cleanName);
         }
     }
 
