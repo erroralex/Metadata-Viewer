@@ -14,6 +14,7 @@ public class FavoriteData {
     private String steps;
     private String cfg;
     private String seed;
+    private String size;
     private String loras;
     private String raw;
     private String thumbnailPath;
@@ -23,8 +24,9 @@ public class FavoriteData {
     public FavoriteData() {}
 
     public FavoriteData(String name, String prompt, String negative, String model, String software,
-                        String sampler, String steps, String cfg, String seed, String loras,
+                        String sampler, String steps, String cfg, String seed, String size, String loras,
                         String raw, String originalPath) {
+
         this.id = UUID.randomUUID().toString();
         this.name = name;
         this.prompt = prompt;
@@ -35,13 +37,15 @@ public class FavoriteData {
         this.steps = steps;
         this.cfg = cfg;
         this.seed = seed;
+        this.size = size;
         this.loras = loras;
         this.raw = raw;
         this.originalPath = originalPath;
         this.timestamp = LocalDateTime.now().toString();
     }
 
-    // Getters and Setters for all fields (id, name, prompt, negative, model, sampler, steps, cfg, seed, loras, raw, thumbnailPath, originalPath, timestamp)
+    // Getters and Setters for all fields (id, name, prompt, negative, model, software,
+    // sampler, steps, cfg, seed, size, loras, raw, thumbnailPath, originalPath, timestamp)
     public String getId() { return id; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -53,6 +57,7 @@ public class FavoriteData {
     public String getSteps() { return steps; }
     public String getCfg() { return cfg; }
     public String getSeed() { return seed; }
+    public String getSize() { return size; }
     public String getLoras() { return loras; }
     public String getRaw() { return raw; }
     public String getThumbnailPath() { return thumbnailPath; }

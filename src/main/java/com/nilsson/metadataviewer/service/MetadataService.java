@@ -15,7 +15,6 @@ import java.util.*;
 
 public class MetadataService {
 
-    // Allow 'NaN' which appears in ComfyUI JSON
     private final ObjectMapper mapper = new ObjectMapper()
             .configure(JsonParser.Feature.ALLOW_NON_NUMERIC_NUMBERS, true)
             .configure(JsonParser.Feature.ALLOW_COMMENTS, true);
@@ -32,7 +31,12 @@ public class MetadataService {
 
     public Map<String, String> getExtractedData(File file) {
         Map<String, String> results = new HashMap<>();
-        String rawData = extractRawMetadata(file);
+
+        // 1. Extract physical dimensions first (so we always have them)
+        extractPhysicalDimensions(file, results);
+
+        // 2. Find the BEST metadata string by analyzing content
+        String rawData = findBestMetadataChunk(file);
 
         if (rawData == null || rawData.isEmpty()) {
             results.put("Prompt", "No metadata found in this image.");
@@ -42,16 +46,16 @@ public class MetadataService {
         results.put("Raw", rawData);
         String trimmed = rawData.trim();
 
-        // Pipeline 1: JSON (ComfyUI, SwarmUI, etc.)
+        // 3. Process the chosen data
+        // JSON Pipeline (ComfyUI, SwarmUI)
         if (trimmed.startsWith("{") || (trimmed.startsWith("\"") && trimmed.contains("\"prompt\""))) {
             parseJsonMetadata(trimmed, results);
         }
-        // Pipeline 2: A1111 / Forge Text Block
+        // Text Pipeline (A1111, Forge)
         else if (rawData.contains("Steps:") && (rawData.contains("Sampler:") || rawData.contains("Schedule type:"))) {
             textParser.parse(rawData, results);
             results.put("Software", "A1111 / Forge");
         }
-        // Fallback
         else {
             results.put("Prompt", rawData);
             results.put("Software", "Unknown");
@@ -60,66 +64,110 @@ public class MetadataService {
         return results;
     }
 
-    private String extractRawMetadata(File file) {
+    /**
+     * Scans the file for all text chunks and picks the one that looks like valid Generation Data.
+     */
+    private String findBestMetadataChunk(File file) {
+        List<String> candidates = new ArrayList<>();
+
         try {
             Metadata metadata = ImageMetadataReader.readMetadata(file);
-            String parameters = null;
-            String prompt = null;
-            String workflow = null;
-            String comment = null;
-
             for (Directory directory : metadata.getDirectories()) {
                 for (Tag tag : directory.getTags()) {
-                    String name = tag.getTagName().toLowerCase();
                     String desc = tag.getDescription();
+                    if (desc == null) continue;
 
-                    if (name.contains("parameters")) parameters = desc;
-                    else if (name.equals("prompt")) prompt = desc;
-                    else if (name.equals("workflow")) workflow = desc;
-                    else if (name.contains("user comment")) comment = desc;
-                    else if (name.contains("textual data") && desc.contains(": {")) {
-                        String jsonPart = desc.substring(desc.indexOf("{")).trim();
-                        if (jsonPart.startsWith("{")) return jsonPart;
+                    // Collect anything that looks like parameters or JSON
+                    if (tag.getTagName().toLowerCase().contains("parameters") ||
+                            tag.getTagName().toLowerCase().contains("user comment") ||
+                            desc.contains("Steps:")) {
+                        candidates.add(desc);
+                    }
+                    else if (desc.contains("{")) {
+                        // Extract JSON part from "key: {json}" format
+                        int braceIndex = desc.indexOf("{");
+                        if (braceIndex != -1) {
+                            candidates.add(desc.substring(braceIndex).trim());
+                        }
                     }
                 }
             }
-            if (parameters != null) return parameters;
-            if (prompt != null) return prompt;
-            if (workflow != null) return workflow;
-            return comment;
         } catch (Exception e) {
             return null;
         }
+
+        // SCORING SYSTEM: Find the "Winner" chunk
+        String bestChunk = null;
+        int bestScore = -1;
+
+        for (String chunk : candidates) {
+            int score = scoreChunk(chunk);
+            if (score > bestScore) {
+                bestScore = score;
+                bestChunk = chunk;
+            }
+        }
+        return bestChunk;
+    }
+
+    /**
+     * Rates a metadata chunk based on how useful it is.
+     * 100 = SwarmUI / ComfyUI API (Gold Standard)
+     * 50  = A1111 Text Block
+     * 10  = ComfyUI Workflow (Visual Graph - Use only as fallback)
+     * 0   = Garbage
+     */
+    private int scoreChunk(String chunk) {
+        if (chunk == null) return 0;
+
+        // SwarmUI (Highest Priority)
+        if (chunk.contains("sui_image_params")) return 100;
+
+        // ComfyUI API (Look for numeric node IDs like "3": { "class_type": ... })
+        // Use a regex to see if it starts with a number key
+        if (chunk.matches("\\s*\\{\\s*\"\\d+\"\\s*:\\s*\\{.*")) return 90;
+
+        // A1111 / Forge
+        if (chunk.contains("Steps:") && chunk.contains("Sampler:")) return 80;
+
+        // ComfyUI Workflow (Graph) - Low priority fallback
+        if (chunk.contains("\"nodes\"") && chunk.contains("\"links\"")) return 10;
+
+        return 0;
+    }
+
+    private void extractPhysicalDimensions(File file, Map<String, String> results) {
+        try {
+            Metadata metadata = ImageMetadataReader.readMetadata(file);
+            for (Directory directory : metadata.getDirectories()) {
+                for (Tag tag : directory.getTags()) {
+                    String name = tag.getTagName().toLowerCase();
+                    if (name.equals("image width")) results.put("Width", tag.getDescription().split(" ")[0]);
+                    else if (name.equals("image height")) results.put("Height", tag.getDescription().split(" ")[0]);
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     private void parseJsonMetadata(String json, Map<String, String> results) {
         try {
             String cleanJson = json;
-
-            // Handle trailing text (e.g., "} Version: ComfyUI")
             int lastBrace = cleanJson.lastIndexOf("}");
             if (lastBrace != -1 && lastBrace < cleanJson.length() - 1) {
                 cleanJson = cleanJson.substring(0, lastBrace + 1);
             }
-
-            // Handle double-escaped strings
-            if (cleanJson.startsWith("\"") && cleanJson.endsWith("\"")) {
+            if (cleanJson.startsWith("\"")) {
                 cleanJson = cleanJson.substring(1, cleanJson.length() - 1).replace("\\\"", "\"");
             }
 
             JsonNode root = mapper.readTree(cleanJson);
 
-            // Robust Software Detection Logic
+            // Determine Software based on the JSON structure we just validated
             String software = "Unknown";
-
-            if (root.has("sui_image_params")) {
-                software = "SwarmUI";
-            } else if (root.has("invokeai_metadata") || (root.has("meta") && root.get("meta").has("invokeai_metadata"))) {
-                software = "InvokeAI";
-            } else if (root.has("uc")) {
-                software = "NovelAI";
-            } else {
-                // ComfyUI Heuristic: Check if keys are numbers ("3", "6") and values have "class_type"
+            if (root.has("sui_image_params")) software = "SwarmUI";
+            else if (root.has("meta") && root.get("meta").has("invokeai_metadata")) software = "InvokeAI";
+            else if (root.has("uc")) software = "NovelAI";
+            else {
                 Iterator<String> keys = root.fieldNames();
                 if (keys.hasNext()) {
                     String firstKey = keys.next();
@@ -130,7 +178,6 @@ public class MetadataService {
                     }
                 }
             }
-
             results.put("Software", software);
 
             findKeysRecursively(root, results);
@@ -139,8 +186,7 @@ public class MetadataService {
                 results.put("Prompt", findLongestText(root));
             }
         } catch (Exception e) {
-            results.put("Prompt", "Error parsing JSON metadata: " + e.getMessage());
-            results.put("Software", "Error");
+            results.put("Prompt", "Error parsing JSON: " + e.getMessage());
         }
     }
 
@@ -149,13 +195,10 @@ public class MetadataService {
             Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> entry = fields.next();
-                String key = entry.getKey().toLowerCase();
-                JsonNode value = entry.getValue();
-
                 for (MetadataStrategy strategy : jsonStrategies) {
-                    strategy.extract(key, value, node, results);
+                    strategy.extract(entry.getKey().toLowerCase(), entry.getValue(), node, results);
                 }
-                findKeysRecursively(value, results);
+                findKeysRecursively(entry.getValue(), results);
             }
         } else if (node.isArray()) {
             for (JsonNode child : node) {

@@ -32,6 +32,7 @@ public class TextParamsParser {
             results.put("CFG", extractRegex(footer, "CFG scale: ([^,]+)"));
             results.put("Seed", extractRegex(footer, "Seed: ([^,]+)"));
 
+            results.put("Size", extractRegex(footer, "Size: ([^,]+)"));
             String sampler = extractRegex(footer, "Sampler: ([^,]+)");
             String scheduler = extractRegex(footer, "Schedule type: ([^,]+)");
             results.put("Sampler", (scheduler.equals("N/A") || scheduler.isEmpty()) ? sampler : sampler + " (" + scheduler + ")");

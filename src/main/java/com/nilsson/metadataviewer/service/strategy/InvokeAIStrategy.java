@@ -25,15 +25,16 @@ public class InvokeAIStrategy implements MetadataStrategy {
 
         // 3. Generation Params
         else if (key.equals("cfg_scale") || key.equals("cfg_rescale_multiplier")) {
-            results.put("CFG", text);
-        }
-        else if (key.equals("sampler_name") || key.equals("scheduler")) {
+            results.put("CFG", text);        }
+
+
+        // This prevents overwriting "Sampler (Scheduler)" (from ComfyUI) with just "Sampler".
+        else if ((key.equals("sampler_name") || key.equals("scheduler")) && !results.containsKey("Sampler")) {
             results.put("Sampler", text);
         }
 
         // 4. Variant Support
         else if (key.equals("variant") && !results.containsKey("Model")) {
-            // Fallback if model name isn't found elsewhere
             results.put("Model", text);
         }
     }

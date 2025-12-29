@@ -25,33 +25,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
-/**
- * The primary interface for inspecting and managing AI-generated image metadata.
- * <p>
- * This class serves as the central workspace where users interact with the application's core
- * extraction capabilities. It extends {@link ScrollPane} to provide a responsive, scrolling
- * layout adaptable to various window sizes.
- * <p>
- * <b>Key Features & Responsibilities:</b>
- * <ul>
- * <li><b>Asynchronous Ingestion:</b> Implements a non-blocking drag-and-drop workflow that offloads
- * file reading and JSON parsing to background {@link Task} threads, ensuring UI responsiveness.</li>
- * <li><b>Comprehensive Visualization:</b> Renders extracted metadata into categorized components,
- * including editable prompt areas, detailed statistical cards (Model, Seed, etc.), and raw JSON inspection.</li>
- * <li><b>Interactive Preview:</b> Displays a thumbnail of the processed image with a visual hint
- * and supports a modal, high-resolution fullscreen view upon user interaction.</li>
- * <li><b>Persistence & Hydration:</b> Bridges the UI with the {@link FavoriteRegistry}, allowing users to
- * save new extractions or re-hydrate the view with data from previously saved favorites.</li>
- * </ul>
- * <p>
- * <b>Architecture Note:</b>
- * This component follows a View-Controller hybrid pattern. It encapsulates UI construction,
- * event handling (e.g., drag events, button clicks), and direct service orchestration.
- *
- * @see MetadataService
- * @see FavoriteRegistry
- * @see FavoriteData
- */
 public class ExtractorView extends ScrollPane {
 
     private final MetadataService service = new MetadataService();
@@ -65,6 +38,7 @@ public class ExtractorView extends ScrollPane {
     private final Label stepsVal = new Label("-");
     private final Label cfgVal = new Label("-");
     private final Label seedVal = new Label("-");
+    private final Label sizeVal = new Label("-"); // NEW LABEL
     private final Label lorasVal = new Label("-");
 
     private final ImageView previewImageView = new ImageView();
@@ -96,11 +70,9 @@ public class ExtractorView extends ScrollPane {
         VBox previewWrapper = new VBox(10);
         previewWrapper.setAlignment(Pos.TOP_CENTER);
 
-        // --- Fullscreen Hint Label ---
         Label fullScreenHint = new Label("Click to Fullscreen");
         fullScreenHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8;");
 
-        // Added fullScreenHint at the top of the wrapper
         previewWrapper.getChildren().addAll(fullScreenHint, previewContainer, createSaveButton(), createRawButton());
 
         dropSection.getChildren().addAll(dropZone, previewWrapper);
@@ -112,13 +84,19 @@ public class ExtractorView extends ScrollPane {
         );
 
         VBox statsWrapper = new VBox(12);
+
         HBox row1 = new HBox(12,
                 createStatCard("Model", modelVal, FontAwesome.CUBE),
-                createStatCard("Software", softwareVal, FontAwesome.TERMINAL), // NEW CARD
+                createStatCard("Software", softwareVal, FontAwesome.TERMINAL),
                 createStatCard("Sampler", samplerVal, FontAwesome.SLIDERS)
         );
 
-        HBox row2 = new HBox(12, createStatCard("Steps", stepsVal, FontAwesome.TASKS), createStatCard("CFG Scale", cfgVal, FontAwesome.ADJUST), createStatCard("Seed", seedVal, FontAwesome.KEY));
+        HBox row2 = new HBox(12,
+                createStatCard("Steps", stepsVal, FontAwesome.TASKS),
+                createStatCard("CFG Scale", cfgVal, FontAwesome.ADJUST),
+                createStatCard("Seed", seedVal, FontAwesome.KEY),
+                createStatCard("Image Size", sizeVal, FontAwesome.IMAGE) // NEW CARD
+        );
 
         VBox.setVgrow(row1, Priority.ALWAYS);
         statsWrapper.getChildren().addAll(row1, row2, createStatCard("Loras Used", lorasVal, FontAwesome.PUZZLE_PIECE));
@@ -136,10 +114,12 @@ public class ExtractorView extends ScrollPane {
         promptText.setText(fav.getPrompt());
         negativePromptText.setText(fav.getNegative());
         modelVal.setText(fav.getModel());
+        softwareVal.setText(fav.getSoftware() != null ? fav.getSoftware() : "Unknown");
         samplerVal.setText(fav.getSampler());
         stepsVal.setText(fav.getSteps());
         cfgVal.setText(fav.getCfg());
         seedVal.setText(fav.getSeed());
+        sizeVal.setText(fav.getSize() != null ? fav.getSize() : "N/A"); // Set Size
         lorasVal.setText(fav.getLoras());
 
         if (fav.getThumbnailPath() != null) {
@@ -159,7 +139,6 @@ public class ExtractorView extends ScrollPane {
         previewImageView.setSmooth(true);
 
         previewContainer.getChildren().add(previewImageView);
-
         previewContainer.setCursor(javafx.scene.Cursor.HAND);
 
         previewContainer.setOnMouseClicked(e -> {
@@ -184,7 +163,6 @@ public class ExtractorView extends ScrollPane {
 
         StackPane root = new StackPane(fullView);
         root.setStyle("-fx-background-color: rgba(0, 0, 0, 0.9);");
-
         root.setOnMouseClicked(e -> stage.close());
 
         Scene scene = new Scene(root);
@@ -223,6 +201,12 @@ public class ExtractorView extends ScrollPane {
             setupDialogDragging(pane);
 
             tid.showAndWait().ifPresent(name -> {
+                // Determine Size string
+                String size = lastData.getOrDefault("Size", "N/A");
+                if (size.equals("N/A") && lastData.containsKey("Width") && lastData.containsKey("Height")) {
+                    size = lastData.get("Width") + "x" + lastData.get("Height");
+                }
+
                 FavoriteData fav = new FavoriteData(
                         name,
                         lastData.getOrDefault("Prompt", ""),
@@ -233,6 +217,7 @@ public class ExtractorView extends ScrollPane {
                         lastData.getOrDefault("Steps", "N/A"),
                         lastData.getOrDefault("CFG", "N/A"),
                         lastData.getOrDefault("Seed", "N/A"),
+                        size,
                         lastData.getOrDefault("Loras", "None"),
                         lastData.getOrDefault("Raw", ""),
                         lastFile != null ? lastFile.getAbsolutePath() : null
@@ -383,11 +368,19 @@ public class ExtractorView extends ScrollPane {
             negativePromptText.setText(lastData.getOrDefault("Negative", "None"));
 
             modelVal.setText(lastData.getOrDefault("Model", "N/A"));
+            softwareVal.setText(lastData.getOrDefault("Software", "Unknown"));
             samplerVal.setText(lastData.getOrDefault("Sampler", "N/A"));
             stepsVal.setText(lastData.getOrDefault("Steps", "N/A"));
             cfgVal.setText(lastData.getOrDefault("CFG", "N/A"));
             seedVal.setText(lastData.getOrDefault("Seed", "N/A"));
             lorasVal.setText(lastData.getOrDefault("Loras", "None"));
+
+            // LOGIC: Check for explicit "Size", otherwise combine "Width" + "Height"
+            String sizeText = lastData.get("Size");
+            if (sizeText == null && lastData.containsKey("Width") && lastData.containsKey("Height")) {
+                sizeText = lastData.get("Width") + "x" + lastData.get("Height");
+            }
+            sizeVal.setText(sizeText != null ? sizeText : "N/A");
 
             try {
                 Image img = new Image(f.toURI().toString(), 140, 140, true, true, true);
