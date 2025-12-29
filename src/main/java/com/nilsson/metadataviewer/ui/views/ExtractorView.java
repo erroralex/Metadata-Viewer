@@ -38,7 +38,7 @@ public class ExtractorView extends ScrollPane {
     private final Label stepsVal = new Label("-");
     private final Label cfgVal = new Label("-");
     private final Label seedVal = new Label("-");
-    private final Label sizeVal = new Label("-"); // NEW LABEL
+    private final Label sizeVal = new Label("-");
     private final Label lorasVal = new Label("-");
 
     private final ImageView previewImageView = new ImageView();
@@ -95,7 +95,7 @@ public class ExtractorView extends ScrollPane {
                 createStatCard("Steps", stepsVal, FontAwesome.TASKS),
                 createStatCard("CFG Scale", cfgVal, FontAwesome.ADJUST),
                 createStatCard("Seed", seedVal, FontAwesome.KEY),
-                createStatCard("Image Size", sizeVal, FontAwesome.IMAGE) // NEW CARD
+                createStatCard("Image Size", sizeVal, FontAwesome.IMAGE)
         );
 
         VBox.setVgrow(row1, Priority.ALWAYS);
@@ -119,7 +119,7 @@ public class ExtractorView extends ScrollPane {
         stepsVal.setText(fav.getSteps());
         cfgVal.setText(fav.getCfg());
         seedVal.setText(fav.getSeed());
-        sizeVal.setText(fav.getSize() != null ? fav.getSize() : "N/A"); // Set Size
+        sizeVal.setText(fav.getSize() != null ? fav.getSize() : "N/A");
         lorasVal.setText(fav.getLoras());
 
         if (fav.getThumbnailPath() != null) {
@@ -201,7 +201,6 @@ public class ExtractorView extends ScrollPane {
             setupDialogDragging(pane);
 
             tid.showAndWait().ifPresent(name -> {
-                // Determine Size string
                 String size = lastData.getOrDefault("Size", "N/A");
                 if (size.equals("N/A") && lastData.containsKey("Width") && lastData.containsKey("Height")) {
                     size = lastData.get("Width") + "x" + lastData.get("Height");
@@ -223,8 +222,12 @@ public class ExtractorView extends ScrollPane {
                         lastFile != null ? lastFile.getAbsolutePath() : null
                 );
 
-                String thumbPath = FavoriteRegistry.getInstance().saveThumbnail(previewImageView.getImage(), fav.getId());
-                fav.setThumbnailPath(thumbPath);
+                // Use the new saveImage method passing the ACTUAL FILE, not the view
+                if (lastFile != null && lastFile.exists()) {
+                    String savedPath = FavoriteRegistry.getInstance().saveImage(lastFile, fav.getId());
+                    fav.setThumbnailPath(savedPath); // We reuse this field, but it points to the full copy now
+                }
+
                 FavoriteRegistry.getInstance().addFavorite(fav);
             });
         });
@@ -375,7 +378,6 @@ public class ExtractorView extends ScrollPane {
             seedVal.setText(lastData.getOrDefault("Seed", "N/A"));
             lorasVal.setText(lastData.getOrDefault("Loras", "None"));
 
-            // LOGIC: Check for explicit "Size", otherwise combine "Width" + "Height"
             String sizeText = lastData.get("Size");
             if (sizeText == null && lastData.containsKey("Width") && lastData.containsKey("Height")) {
                 sizeText = lastData.get("Width") + "x" + lastData.get("Height");

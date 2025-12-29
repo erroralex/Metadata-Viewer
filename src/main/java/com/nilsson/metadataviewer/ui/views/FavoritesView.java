@@ -91,13 +91,15 @@ public class FavoritesView extends VBox {
 
             folderBtn.getStyleClass().add("button"); // NEW
             folderBtn.setGraphic(new FontIcon(FontAwesome.FOLDER_OPEN));
-            folderBtn.setTooltip(new Tooltip("Open Thumbnail Location"));
+            folderBtn.setTooltip(new Tooltip("Open Image Location"));
 
             copyBtn.getStyleClass().add("button");
             copyBtn.setGraphic(new FontIcon(FontAwesome.COPY));
+            copyBtn.setTooltip(new Tooltip("Copy Positive Prompt"));
 
             deleteBtn.getStyleClass().addAll("button", "exit-button");
             deleteBtn.setGraphic(new FontIcon(FontAwesome.TRASH));
+            deleteBtn.setTooltip(new Tooltip("Remove Favorite"));
 
             HBox actions = new HBox(10, viewBtn, folderBtn, copyBtn, deleteBtn);
             actions.setAlignment(Pos.CENTER_RIGHT);

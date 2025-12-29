@@ -26,7 +26,6 @@ public class FavoriteData {
     public FavoriteData(String name, String prompt, String negative, String model, String software,
                         String sampler, String steps, String cfg, String seed, String size, String loras,
                         String raw, String originalPath) {
-
         this.id = UUID.randomUUID().toString();
         this.name = name;
         this.prompt = prompt;
@@ -44,11 +43,9 @@ public class FavoriteData {
         this.timestamp = LocalDateTime.now().toString();
     }
 
-    // Getters and Setters for all fields (id, name, prompt, negative, model, software,
-    // sampler, steps, cfg, seed, size, loras, raw, thumbnailPath, originalPath, timestamp)
+    // --- Getters ---
     public String getId() { return id; }
     public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
     public String getPrompt() { return prompt; }
     public String getNegative() { return negative; }
     public String getModel() { return model; }
@@ -61,7 +58,24 @@ public class FavoriteData {
     public String getLoras() { return loras; }
     public String getRaw() { return raw; }
     public String getThumbnailPath() { return thumbnailPath; }
-    public void setThumbnailPath(String path) { this.thumbnailPath = path; }
     public String getOriginalPath() { return originalPath; }
     public String getTimestamp() { return timestamp; }
+
+    // --- Setters (Required for JSON Loading) ---
+    public void setId(String id) { this.id = id; }
+    public void setName(String name) { this.name = name; }
+    public void setPrompt(String prompt) { this.prompt = prompt; }
+    public void setNegative(String negative) { this.negative = negative; }
+    public void setModel(String model) { this.model = model; }
+    public void setSoftware(String software) { this.software = software; }
+    public void setSampler(String sampler) { this.sampler = sampler; }
+    public void setSteps(String steps) { this.steps = steps; }
+    public void setCfg(String cfg) { this.cfg = cfg; }
+    public void setSeed(String seed) { this.seed = seed; }
+    public void setSize(String size) { this.size = size; }
+    public void setLoras(String loras) { this.loras = loras; }
+    public void setRaw(String raw) { this.raw = raw; }
+    public void setThumbnailPath(String thumbnailPath) { this.thumbnailPath = thumbnailPath; }
+    public void setOriginalPath(String originalPath) { this.originalPath = originalPath; }
+    public void setTimestamp(String timestamp) { this.timestamp = timestamp; }
 }
