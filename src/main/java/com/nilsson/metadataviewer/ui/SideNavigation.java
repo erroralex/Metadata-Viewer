@@ -1,7 +1,5 @@
 package com.nilsson.metadataviewer.ui;
 
-import com.nilsson.metadataviewer.ui.views.ExtractorView;
-import com.nilsson.metadataviewer.ui.views.FavoritesView;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
@@ -55,16 +53,16 @@ public class SideNavigation extends VBox {
         }
         this.getChildren().add(logoArea);
 
-        // Navigation Buttons
+        // --- Navigation Buttons ---
         btnExtractor = createNavButton("Extractor", FontAwesome.DASHBOARD);
         btnExtractor.setOnAction(e -> {
-            rootLayout.setContent(new ExtractorView());
+            rootLayout.navigateToExtractor(null);
             setActiveButton(btnExtractor);
         });
 
         btnFavorites = createNavButton("Favorites", FontAwesome.STAR);
         btnFavorites.setOnAction(e -> {
-            rootLayout.setContent(new FavoritesView(rootLayout));
+            rootLayout.navigateToFavorites(null);
             setActiveButton(btnFavorites);
         });
 
@@ -82,23 +80,21 @@ public class SideNavigation extends VBox {
             Image lowerLogoImg = new Image(lowerLogoPath);
             ImageView lowerLogoView = new ImageView(lowerLogoImg);
 
-            lowerLogoView.setFitWidth(120); // Slightly smaller than the top logo
+            lowerLogoView.setFitWidth(120);
             lowerLogoView.setPreserveRatio(true);
             lowerLogoView.setSmooth(true);
-
-            // Reduce opacity for a subtle look
             lowerLogoView.setOpacity(0.6);
 
             lowerLogoArea.getChildren().add(lowerLogoView);
         } catch (Exception e) {
-            // Silent catch if image is missing to prevent UI crash
+            // Silent catch if image is missing
         }
 
         // Exit Logic
         Button btnExit = createNavButton("Exit App", FontAwesome.POWER_OFF);
         btnExit.setOnAction(e -> System.exit(0));
 
-        // Adding children in order: nav buttons -> spacer -> lower logo -> exit button
+        // Adding children
         this.getChildren().addAll(btnExtractor, btnFavorites, spacer, lowerLogoArea, btnExit);
 
         // Default Active State
@@ -107,6 +103,10 @@ public class SideNavigation extends VBox {
 
     public void highlightExtractor() {
         setActiveButton(btnExtractor);
+    }
+
+    public void highlightFavorites() {
+        setActiveButton(btnFavorites);
     }
 
     private Button createNavButton(String text, org.kordamp.ikonli.Ikon iconCode) {

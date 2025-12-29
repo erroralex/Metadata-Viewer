@@ -3,12 +3,18 @@ package com.nilsson.metadataviewer.ui.views;
 import com.nilsson.metadataviewer.model.FavoriteData;
 import com.nilsson.metadataviewer.model.FavoriteRegistry;
 import com.nilsson.metadataviewer.service.MetadataService;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
 import org.kordamp.ikonli.fontawesome.FontAwesome;
@@ -19,13 +25,42 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * The primary interface for inspecting and managing AI-generated image metadata.
+ * <p>
+ * This class serves as the central workspace where users interact with the application's core
+ * extraction capabilities. It extends {@link ScrollPane} to provide a responsive, scrolling
+ * layout adaptable to various window sizes.
+ * <p>
+ * <b>Key Features & Responsibilities:</b>
+ * <ul>
+ * <li><b>Asynchronous Ingestion:</b> Implements a non-blocking drag-and-drop workflow that offloads
+ * file reading and JSON parsing to background {@link Task} threads, ensuring UI responsiveness.</li>
+ * <li><b>Comprehensive Visualization:</b> Renders extracted metadata into categorized components,
+ * including editable prompt areas, detailed statistical cards (Model, Seed, etc.), and raw JSON inspection.</li>
+ * <li><b>Interactive Preview:</b> Displays a thumbnail of the processed image with a visual hint
+ * and supports a modal, high-resolution fullscreen view upon user interaction.</li>
+ * <li><b>Persistence & Hydration:</b> Bridges the UI with the {@link FavoriteRegistry}, allowing users to
+ * save new extractions or re-hydrate the view with data from previously saved favorites.</li>
+ * </ul>
+ * <p>
+ * <b>Architecture Note:</b>
+ * This component follows a View-Controller hybrid pattern. It encapsulates UI construction,
+ * event handling (e.g., drag events, button clicks), and direct service orchestration.
+ *
+ * @see MetadataService
+ * @see FavoriteRegistry
+ * @see FavoriteData
+ */
 public class ExtractorView extends ScrollPane {
+
     private final MetadataService service = new MetadataService();
 
     private final TextArea promptText = new TextArea();
     private final TextArea negativePromptText = new TextArea();
 
     private final Label modelVal = new Label("-");
+    private final Label softwareVal = new Label("-");
     private final Label samplerVal = new Label("-");
     private final Label stepsVal = new Label("-");
     private final Label cfgVal = new Label("-");
@@ -60,7 +95,13 @@ public class ExtractorView extends ScrollPane {
 
         VBox previewWrapper = new VBox(10);
         previewWrapper.setAlignment(Pos.TOP_CENTER);
-        previewWrapper.getChildren().addAll(previewContainer, createSaveButton(), createRawButton());
+
+        // --- Fullscreen Hint Label ---
+        Label fullScreenHint = new Label("Click to Fullscreen");
+        fullScreenHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8;");
+
+        // Added fullScreenHint at the top of the wrapper
+        previewWrapper.getChildren().addAll(fullScreenHint, previewContainer, createSaveButton(), createRawButton());
 
         dropSection.getChildren().addAll(dropZone, previewWrapper);
 
@@ -71,7 +112,12 @@ public class ExtractorView extends ScrollPane {
         );
 
         VBox statsWrapper = new VBox(12);
-        HBox row1 = new HBox(12, createStatCard("Model", modelVal, FontAwesome.CUBE), createStatCard("Sampler", samplerVal, FontAwesome.SLIDERS));
+        HBox row1 = new HBox(12,
+                createStatCard("Model", modelVal, FontAwesome.CUBE),
+                createStatCard("Software", softwareVal, FontAwesome.TERMINAL), // NEW CARD
+                createStatCard("Sampler", samplerVal, FontAwesome.SLIDERS)
+        );
+
         HBox row2 = new HBox(12, createStatCard("Steps", stepsVal, FontAwesome.TASKS), createStatCard("CFG Scale", cfgVal, FontAwesome.ADJUST), createStatCard("Seed", seedVal, FontAwesome.KEY));
 
         VBox.setVgrow(row1, Priority.ALWAYS);
@@ -97,6 +143,8 @@ public class ExtractorView extends ScrollPane {
         lorasVal.setText(fav.getLoras());
 
         if (fav.getThumbnailPath() != null) {
+            File thumbFile = new File(fav.getThumbnailPath());
+            this.lastFile = thumbFile.exists() ? thumbFile : null;
             previewImageView.setImage(new Image("file:" + fav.getThumbnailPath()));
         }
     }
@@ -104,11 +152,54 @@ public class ExtractorView extends ScrollPane {
     private void setupPreviewContainer() {
         previewContainer.getStyleClass().add("income-stats-box");
         previewContainer.setPrefSize(160, 160);
+
         previewImageView.setFitWidth(140);
         previewImageView.setFitHeight(140);
         previewImageView.setPreserveRatio(true);
         previewImageView.setSmooth(true);
+
         previewContainer.getChildren().add(previewImageView);
+
+        previewContainer.setCursor(javafx.scene.Cursor.HAND);
+
+        previewContainer.setOnMouseClicked(e -> {
+            if (lastFile != null && lastFile.exists()) {
+                showFullScreenImage(lastFile);
+            }
+        });
+    }
+
+    private void showFullScreenImage(File file) {
+        Stage stage = new Stage();
+        stage.initOwner(this.getScene().getWindow());
+        stage.initModality(Modality.APPLICATION_MODAL);
+        stage.initStyle(StageStyle.TRANSPARENT);
+
+        ImageView fullView = new ImageView(new Image(file.toURI().toString()));
+        fullView.setPreserveRatio(true);
+        fullView.setSmooth(true);
+
+        fullView.fitWidthProperty().bind(stage.widthProperty());
+        fullView.fitHeightProperty().bind(stage.heightProperty());
+
+        StackPane root = new StackPane(fullView);
+        root.setStyle("-fx-background-color: rgba(0, 0, 0, 0.9);");
+
+        root.setOnMouseClicked(e -> stage.close());
+
+        Scene scene = new Scene(root);
+        scene.setFill(Color.TRANSPARENT);
+
+        scene.setOnKeyPressed(e -> {
+            if (e.getCode() == KeyCode.ESCAPE) {
+                stage.close();
+            }
+        });
+
+        stage.setScene(scene);
+        stage.setFullScreen(true);
+        stage.setFullScreenExitHint("");
+        stage.show();
     }
 
     private Button createSaveButton() {
@@ -133,10 +224,16 @@ public class ExtractorView extends ScrollPane {
 
             tid.showAndWait().ifPresent(name -> {
                 FavoriteData fav = new FavoriteData(
-                        name, lastData.getOrDefault("Prompt", ""), lastData.getOrDefault("Negative", "None"),
-                        lastData.getOrDefault("Model", "N/A"), lastData.getOrDefault("Sampler", "N/A"),
-                        lastData.getOrDefault("Steps", "N/A"), lastData.getOrDefault("CFG", "N/A"),
-                        lastData.getOrDefault("Seed", "N/A"), lastData.getOrDefault("Loras", "None"),
+                        name,
+                        lastData.getOrDefault("Prompt", ""),
+                        lastData.getOrDefault("Negative", "None"),
+                        lastData.getOrDefault("Model", "N/A"),
+                        lastData.getOrDefault("Software", "Unknown"),
+                        lastData.getOrDefault("Sampler", "N/A"),
+                        lastData.getOrDefault("Steps", "N/A"),
+                        lastData.getOrDefault("CFG", "N/A"),
+                        lastData.getOrDefault("Seed", "N/A"),
+                        lastData.getOrDefault("Loras", "None"),
                         lastData.getOrDefault("Raw", ""),
                         lastFile != null ? lastFile.getAbsolutePath() : null
                 );
@@ -268,19 +365,48 @@ public class ExtractorView extends ScrollPane {
 
     public void process(File f) {
         this.lastFile = f;
-        lastData = service.getExtractedData(f);
-        promptText.setText(lastData.getOrDefault("Prompt", ""));
-        negativePromptText.setText(lastData.getOrDefault("Negative", "None"));
-        modelVal.setText(lastData.getOrDefault("Model", "N/A"));
-        samplerVal.setText(lastData.getOrDefault("Sampler", "N/A"));
-        stepsVal.setText(lastData.getOrDefault("Steps", "N/A"));
-        cfgVal.setText(lastData.getOrDefault("CFG", "N/A"));
-        seedVal.setText(lastData.getOrDefault("Seed", "N/A"));
-        lorasVal.setText(lastData.getOrDefault("Loras", "None"));
-        try {
-            previewImageView.setImage(new Image(f.toURI().toString(), 140, 140, true, true));
-        } catch (Exception e) {
-            previewImageView.setImage(null);
-        }
+
+        promptText.setText("Parsing metadata...");
+        this.getScene().setCursor(javafx.scene.Cursor.WAIT);
+
+        Task<Map<String, String>> extractionTask = new Task<Map<String, String>>() {
+            @Override
+            protected Map<String, String> call() throws Exception {
+                return service.getExtractedData(f);
+            }
+        };
+
+        extractionTask.setOnSucceeded(e -> {
+            lastData = extractionTask.getValue();
+
+            promptText.setText(lastData.getOrDefault("Prompt", ""));
+            negativePromptText.setText(lastData.getOrDefault("Negative", "None"));
+
+            modelVal.setText(lastData.getOrDefault("Model", "N/A"));
+            samplerVal.setText(lastData.getOrDefault("Sampler", "N/A"));
+            stepsVal.setText(lastData.getOrDefault("Steps", "N/A"));
+            cfgVal.setText(lastData.getOrDefault("CFG", "N/A"));
+            seedVal.setText(lastData.getOrDefault("Seed", "N/A"));
+            lorasVal.setText(lastData.getOrDefault("Loras", "None"));
+
+            try {
+                Image img = new Image(f.toURI().toString(), 140, 140, true, true, true);
+                previewImageView.setImage(img);
+            } catch (Exception ex) {
+                previewImageView.setImage(null);
+            }
+
+            this.getScene().setCursor(javafx.scene.Cursor.DEFAULT);
+        });
+
+        extractionTask.setOnFailed(e -> {
+            Throwable ex = extractionTask.getException();
+            promptText.setText("Error reading file: " + ex.getMessage());
+            modelVal.setText("Error");
+            this.getScene().setCursor(javafx.scene.Cursor.DEFAULT);
+            ex.printStackTrace();
+        });
+
+        new Thread(extractionTask).start();
     }
 }

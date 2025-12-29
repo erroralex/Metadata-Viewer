@@ -9,6 +9,7 @@ public class FavoriteData {
     private String prompt;
     private String negative;
     private String model;
+    private String software;
     private String sampler;
     private String steps;
     private String cfg;
@@ -21,14 +22,15 @@ public class FavoriteData {
 
     public FavoriteData() {}
 
-    public FavoriteData(String name, String prompt, String negative, String model, String sampler,
-                        String steps, String cfg, String seed, String loras, String raw,
-                        String originalPath) {
+    public FavoriteData(String name, String prompt, String negative, String model, String software,
+                        String sampler, String steps, String cfg, String seed, String loras,
+                        String raw, String originalPath) {
         this.id = UUID.randomUUID().toString();
         this.name = name;
         this.prompt = prompt;
         this.negative = negative;
         this.model = model;
+        this.software = software;
         this.sampler = sampler;
         this.steps = steps;
         this.cfg = cfg;
@@ -46,6 +48,7 @@ public class FavoriteData {
     public String getPrompt() { return prompt; }
     public String getNegative() { return negative; }
     public String getModel() { return model; }
+    public String getSoftware() { return software; }
     public String getSampler() { return sampler; }
     public String getSteps() { return steps; }
     public String getCfg() { return cfg; }

@@ -34,7 +34,7 @@
 .custom-title-bar {
     -fx-background-color: -app-bg-secondary;
     -fx-alignment: center-left;
-    -fx-padding: 0 10 0 0; /* Ensures right-side gap for a clean finish */
+    -fx-padding: 0 2 0 0; /* Ensures right-side gap for a clean finish */
 }
 
 .title-label {

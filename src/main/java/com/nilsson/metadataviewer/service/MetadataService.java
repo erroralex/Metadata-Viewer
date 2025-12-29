@@ -13,16 +13,13 @@ import com.nilsson.metadataviewer.service.strategy.*;
 import java.io.File;
 import java.util.*;
 
-/**
- * Unified service for extracting AI metadata.
- * Acts as a Coordinator that dispatches extraction tasks to specific Strategies or Parsers.
- */
 public class MetadataService {
 
+    // Allow 'NaN' which appears in ComfyUI JSON
     private final ObjectMapper mapper = new ObjectMapper()
-            .configure(JsonParser.Feature.ALLOW_NON_NUMERIC_NUMBERS, true);
+            .configure(JsonParser.Feature.ALLOW_NON_NUMERIC_NUMBERS, true)
+            .configure(JsonParser.Feature.ALLOW_COMMENTS, true);
 
-    // 1. The JSON Specialists (Strategy Pattern)
     private final List<MetadataStrategy> jsonStrategies = Arrays.asList(
             new SwarmUIStrategy(),
             new ComfyUIStrategy(),
@@ -31,13 +28,8 @@ public class MetadataService {
             new CommonStrategy()
     );
 
-    // 2. The Text Specialist (Separated Parser)
     private final TextParamsParser textParser = new TextParamsParser();
 
-    /**
-     * Main Entry Point.
-     * Detects the metadata format and delegates to the correct pipeline.
-     */
     public Map<String, String> getExtractedData(File file) {
         Map<String, String> results = new HashMap<>();
         String rawData = extractRawMetadata(file);
@@ -50,30 +42,24 @@ public class MetadataService {
         results.put("Raw", rawData);
         String trimmed = rawData.trim();
 
-        // -------------------------------------------------------
-        // PIPELINE 1: JSON (ComfyUI, SwarmUI, InvokeAI, NovelAI)
-        // -------------------------------------------------------
+        // Pipeline 1: JSON (ComfyUI, SwarmUI, etc.)
         if (trimmed.startsWith("{") || (trimmed.startsWith("\"") && trimmed.contains("\"prompt\""))) {
             parseJsonMetadata(trimmed, results);
         }
-        // -------------------------------------------------------
-        // PIPELINE 2: TEXT (A1111, Forge, Reforge, Fooocus)
-        // -------------------------------------------------------
-        // Checks for standard A1111 signature or Scheduler presence
+        // Pipeline 2: A1111 / Forge Text Block
         else if (rawData.contains("Steps:") && (rawData.contains("Sampler:") || rawData.contains("Schedule type:"))) {
             textParser.parse(rawData, results);
+            results.put("Software", "A1111 / Forge");
         }
-        // -------------------------------------------------------
-        // FALLBACK: Raw Text
-        // -------------------------------------------------------
+        // Fallback
         else {
             results.put("Prompt", rawData);
+            results.put("Software", "Unknown");
         }
 
         return results;
     }
 
-    // Reads the physical file headers to find hidden metadata strings.
     private String extractRawMetadata(File file) {
         try {
             Metadata metadata = ImageMetadataReader.readMetadata(file);
@@ -91,7 +77,6 @@ public class MetadataService {
                     else if (name.equals("prompt")) prompt = desc;
                     else if (name.equals("workflow")) workflow = desc;
                     else if (name.contains("user comment")) comment = desc;
-                        // ComfyUI specific chunk detection within "Textual Data"
                     else if (name.contains("textual data") && desc.contains(": {")) {
                         String jsonPart = desc.substring(desc.indexOf("{")).trim();
                         if (jsonPart.startsWith("{")) return jsonPart;
@@ -107,35 +92,58 @@ public class MetadataService {
         }
     }
 
-    /**
-     * Prepares the JSON and initiates the Recursive Strategy Search.
-     */
     private void parseJsonMetadata(String json, Map<String, String> results) {
         try {
-            // Handle double-escaped JSON strings if necessary
             String cleanJson = json;
-            if (json.startsWith("\"") && json.endsWith("\"")) {
-                cleanJson = json.substring(1, json.length() - 1).replace("\\\"", "\"");
+
+            // Handle trailing text (e.g., "} Version: ComfyUI")
+            int lastBrace = cleanJson.lastIndexOf("}");
+            if (lastBrace != -1 && lastBrace < cleanJson.length() - 1) {
+                cleanJson = cleanJson.substring(0, lastBrace + 1);
+            }
+
+            // Handle double-escaped strings
+            if (cleanJson.startsWith("\"") && cleanJson.endsWith("\"")) {
+                cleanJson = cleanJson.substring(1, cleanJson.length() - 1).replace("\\\"", "\"");
             }
 
             JsonNode root = mapper.readTree(cleanJson);
-            results.put("Type", "ComfyUI/SwarmUI/JSON"); // Generic Label
+
+            // Robust Software Detection Logic
+            String software = "Unknown";
+
+            if (root.has("sui_image_params")) {
+                software = "SwarmUI";
+            } else if (root.has("invokeai_metadata") || (root.has("meta") && root.get("meta").has("invokeai_metadata"))) {
+                software = "InvokeAI";
+            } else if (root.has("uc")) {
+                software = "NovelAI";
+            } else {
+                // ComfyUI Heuristic: Check if keys are numbers ("3", "6") and values have "class_type"
+                Iterator<String> keys = root.fieldNames();
+                if (keys.hasNext()) {
+                    String firstKey = keys.next();
+                    if (firstKey.matches("\\d+") && root.get(firstKey).has("class_type")) {
+                        software = "ComfyUI";
+                    } else if (root.has("nodes") && root.has("links")) {
+                        software = "ComfyUI (Workflow)";
+                    }
+                }
+            }
+
+            results.put("Software", software);
 
             findKeysRecursively(root, results);
 
-            // Fallback: If no prompt found via strategies, try to find the longest text block
             if (!results.containsKey("Prompt") || results.get("Prompt").isEmpty()) {
                 results.put("Prompt", findLongestText(root));
             }
         } catch (Exception e) {
             results.put("Prompt", "Error parsing JSON metadata: " + e.getMessage());
+            results.put("Software", "Error");
         }
     }
 
-    /**
-     * Aggressive Recursive Search.
-     * Visits every node in the JSON tree and lets ALL active strategies try to extract data.
-     */
     private void findKeysRecursively(JsonNode node, Map<String, String> results) {
         if (node.isObject()) {
             Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
@@ -144,12 +152,9 @@ public class MetadataService {
                 String key = entry.getKey().toLowerCase();
                 JsonNode value = entry.getValue();
 
-                // EXECUTE ALL STRATEGIES ON THIS NODE
                 for (MetadataStrategy strategy : jsonStrategies) {
                     strategy.extract(key, value, node, results);
                 }
-
-                // Continue Recursion
                 findKeysRecursively(value, results);
             }
         } else if (node.isArray()) {
