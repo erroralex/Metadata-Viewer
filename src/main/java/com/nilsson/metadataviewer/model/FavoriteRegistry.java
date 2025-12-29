@@ -6,15 +6,14 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
-import javafx.embed.swing.SwingFXUtils;
-import javax.imageio.ImageIO;
-import javafx.scene.image.Image;
 
 /**
  * Singleton Registry for managing favorite metadata entries.
- * Updated to use OS-standard persistent data directories for standalone deployment.
+ * Updated to save FULL image copies to preserve metadata.
  */
 public class FavoriteRegistry {
 
@@ -39,13 +38,13 @@ public class FavoriteRegistry {
 
     private static final String BASE_PATH = getDataDirectory();
     private static final String DATA_PATH = BASE_PATH + File.separator + "favorites.json";
-    public static final String THUMB_PATH = BASE_PATH + File.separator + "thumbnails" + File.separator;
+
+    public static final String IMAGES_PATH = BASE_PATH + File.separator + "saved_images" + File.separator;
 
     private static final ObjectMapper MAPPER = new ObjectMapper().registerModule(new JavaTimeModule());
 
     private List<FavoriteData> favoritesList;
 
-    // Private constructor for Singleton pattern
     private FavoriteRegistry() {
         this.favoritesList = loadFromDisk();
     }
@@ -68,42 +67,28 @@ public class FavoriteRegistry {
     }
 
     public void removeFavorite(FavoriteData favorite) {
-        // Delete the physical thumbnail file if it exists
         if (favorite.getThumbnailPath() != null) {
-            File thumbFile = new File(favorite.getThumbnailPath());
-            if (thumbFile.exists()) {
-                boolean deleted = thumbFile.delete();
-                if (!deleted) {
-                    System.err.println("Warning: Could not delete thumbnail file at " + favorite.getThumbnailPath());
-                }
+            File imgFile = new File(favorite.getThumbnailPath());
+            if (imgFile.exists()) {
+                imgFile.delete();
             }
         }
-
-        // Remove the entry from the in-memory list
         favoritesList.removeIf(f -> f.getId().equals(favorite.getId()));
-
-        // Persist the updated list to favorites.json
         saveToDisk();
     }
 
     private void saveToDisk() {
         try {
             File file = new File(DATA_PATH);
-            // Ensure the directory structure (including the thumbnails folder) exists
             File dir = file.getParentFile();
-            if (!dir.exists()) {
-                dir.mkdirs();
-            }
+            if (!dir.exists()) dir.mkdirs();
 
-            // Also ensure thumbnail directory exists
-            File thumbDir = new File(THUMB_PATH);
-            if (!thumbDir.exists()) {
-                thumbDir.mkdirs();
-            }
+            File imgDir = new File(IMAGES_PATH);
+            if (!imgDir.exists()) imgDir.mkdirs();
 
             MAPPER.writerWithDefaultPrettyPrinter().writeValue(file, favoritesList);
         } catch (IOException e) {
-            System.err.println("Could not save favorites to " + DATA_PATH + ": " + e.getMessage());
+            System.err.println("Could not save favorites: " + e.getMessage());
         }
     }
 
@@ -115,22 +100,34 @@ public class FavoriteRegistry {
         try {
             return MAPPER.readValue(file, new TypeReference<List<FavoriteData>>() {});
         } catch (IOException e) {
-            System.err.println("Could not load favorites from " + DATA_PATH + ": " + e.getMessage());
+            System.err.println("Could not load favorites: " + e.getMessage());
             return new ArrayList<>();
         }
     }
 
-    public String saveThumbnail(Image image, String id) {
-        if (image == null) return null;
-        File thumbDir = new File(THUMB_PATH);
-        if (!thumbDir.exists()) thumbDir.mkdirs();
+    // Copies the original source file to the app's persistent storage instead of re-compressing the image to preserve metadata.
+    public String saveImage(File sourceFile, String id) {
+        if (sourceFile == null || !sourceFile.exists()) return null;
 
-        File thumbFile = new File(thumbDir, id + ".png");
+        File targetDir = new File(IMAGES_PATH);
+        if (!targetDir.exists()) targetDir.mkdirs();
+
+        // Preserve original extension (png, jpg, webp)
+        String originalName = sourceFile.getName();
+        String extension = "png";
+        int i = originalName.lastIndexOf('.');
+        if (i > 0) {
+            extension = originalName.substring(i + 1);
+        }
+
+        File targetFile = new File(targetDir, id + "." + extension);
+
         try {
-            ImageIO.write(SwingFXUtils.fromFXImage(image, null), "png", thumbFile);
-            return thumbFile.getAbsolutePath();
+            // Perform actual file copy
+            Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return targetFile.getAbsolutePath();
         } catch (IOException e) {
-            System.err.println("Failed to save thumbnail: " + e.getMessage());
+            System.err.println("Failed to copy image: " + e.getMessage());
             return null;
         }
     }
