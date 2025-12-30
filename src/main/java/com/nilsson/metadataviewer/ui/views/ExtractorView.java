@@ -56,7 +56,7 @@ public class ExtractorView extends ScrollPane {
         container.setPadding(new Insets(20, 30, 30, 30));
         container.setAlignment(Pos.TOP_CENTER);
 
-        Label title = new Label("AI Metadata Extractor");
+        Label title = new Label("AI Image Metadata Extractor");
         title.getStyleClass().add("content-title");
 
         HBox dropSection = new HBox(20);

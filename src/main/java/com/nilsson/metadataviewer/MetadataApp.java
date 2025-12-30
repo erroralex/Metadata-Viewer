@@ -44,6 +44,8 @@ public class MetadataApp extends Application {
                 scene.getStylesheets().add(cssPath);
             }
 
+            com.nilsson.metadataviewer.ui.ResizeHelper.addResizeListener(primaryStage);
+
             primaryStage.setScene(scene);
             primaryStage.setTitle("Metadata Extractor by ALX");
             primaryStage.getIcons().add(new javafx.scene.image.Image(getClass().getResource("/icon.png").toExternalForm()));
