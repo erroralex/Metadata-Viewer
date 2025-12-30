@@ -3,7 +3,10 @@ package com.nilsson.metadataviewer;
 public class ToDo {
 
 
-    //TODO ->
+    //TODO -> Resizable
+    //TODO -> Better Lora Support
+    //TODO -> Lora Weights
+    //TODO -> Language Support
 
 
 

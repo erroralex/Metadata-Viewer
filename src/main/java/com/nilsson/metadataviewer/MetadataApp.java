@@ -55,6 +55,11 @@ public class MetadataApp extends Application {
     }
 
     public static void main(String[] args) {
+        // FORCE UTF-8 ENCODING to fix issues on non-English Windows (Hungarian, etc.)
+        System.setProperty("file.encoding", "UTF-8");
+        System.setProperty("sun.jnu.encoding", "UTF-8");
+        System.setProperty("sun.stdout.encoding", "UTF-8");
+        System.setProperty("sun.stderr.encoding", "UTF-8");
         launch(args);
     }
 }
