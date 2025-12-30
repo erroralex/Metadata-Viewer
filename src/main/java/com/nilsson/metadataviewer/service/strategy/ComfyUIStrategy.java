@@ -64,7 +64,21 @@ public class ComfyUIStrategy implements MetadataStrategy {
     }
 
     private boolean isNegativeNode(JsonNode node) {
-        return node.has("_meta") && node.get("_meta").has("title") &&
-                node.get("_meta").get("title").asText().toLowerCase().contains("negative");
+        // Check Metadata Title (User defined or Default)
+        if (node.has("_meta") && node.get("_meta").has("title")) {
+            String title = node.get("_meta").get("title").asText().toLowerCase();
+            return title.contains("negative") || title.contains("neg ") || title.contains("(neg)") || title.equals("neg");
+        }
+
+        // Fallback: Check Inputs for standard negative labeling (rare but possible in custom nodes)
+        if (node.has("inputs")) {
+            JsonNode inputs = node.get("inputs");
+            // Some custom nodes might use specific keys for negative text input
+            if (inputs.has("negative") || inputs.has("neg")) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
