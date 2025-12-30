@@ -65,16 +65,7 @@ The application implements a **Model-View-Service** (MVS) architecture to decoup
 
 ## 🚀 Getting Started
 
-1.  **Clone the repository**.
-
-2.  **Build with Maven:**
-    ```bash
-    mvn clean install
-    ```
-3.  **Run:**
-    ```bash
-    mvn javafx:run
-    ```
+[![Download Portable Zip](https://img.shields.io/badge/Download-Portable_Zip-2ea44f?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/erroralex/metadata-viewer/releases/latest)
 
 ---
 
