@@ -1,241 +1,225 @@
 /* * ===================================================================================
- * METADATA VIEWER - MODERN DARK & PURPLE THEME
+ * METADATA VIEWER - APPLICATION THEME
  * Version: 2.5 (Ultimate Artifact Removal & Modern Warning Red)
+ * Theme:   Modern Dark & Purple
  * ===================================================================================
  */
 
+/* * -----------------------------------------------------------------------------------
+ * 1. ROOT VARIABLES & GLOBAL BASE
+ * -----------------------------------------------------------------------------------
+ */
 .root {
-    /* --- Theme Color Variables --- */
-    -app-bg-main: #0b0e14;
-    -app-bg-secondary: #151921;
-    -app-bg-card: #1c212b;
-    -app-accent: #7c4dff;
-    -app-text-primary: #e2e8f0;
-    -app-text-muted: #94a3b8;
+    /* --- Color Palette --- */
+    -app-bg-main:       #0b0e14;
+    -app-bg-secondary:  #151921;
+    -app-bg-card:       #1c212b;
+    -app-accent:        #7c4dff;
+    -app-text-primary:  #e2e8f0;
+    -app-text-muted:    #94a3b8;
     -app-border-subtle: #2d333b;
-    -app-warning-red: #ef4444;
+    -app-warning-red:   #ef4444;
 
-    /* --- Global JavaFX Base Styles --- */
+    /* --- JavaFX Overrides --- */
     -fx-background-color: -app-bg-main;
-    -fx-base: -app-bg-main;
-    -fx-accent: -app-accent;
-    -fx-default-button: -app-accent;
+    -fx-base:             -app-bg-main;
+    -fx-accent:           -app-accent;
+    -fx-default-button:   -app-accent;
 
-    /* --- Typography --- */
+    /* --- Global Typography --- */
     -fx-font-family: "Inter", "Segoe UI", Arial, sans-serif;
-    -fx-font-size: 14px;
+    -fx-font-size:   14px;
 }
 
 /* * -----------------------------------------------------------------------------------
- * CUSTOM TITLE BAR & WINDOW CONTROLS
+ * 2. TYPOGRAPHY & HEADERS
+ * -----------------------------------------------------------------------------------
+ */
+
+/* Main Page Headers (e.g. "AI Metadata Extractor") */
+.content-title {
+    -fx-text-fill:   -app-accent;
+    -fx-font-weight: bold;
+    -fx-font-size:   1.5em;
+    -fx-padding:     0 0 10 0;
+    -fx-effect:      dropshadow(three-pass-box, rgba(0,0,0,0.3), 0, 0, 0, 1);
+}
+
+/* Section Sub-headers */
+.app-title {
+    -fx-text-fill:   -app-text-primary;
+    -fx-font-weight: bold;
+    -fx-font-size:   1.1em;
+}
+
+/* * -----------------------------------------------------------------------------------
+ * 3. WINDOW CHROME (Title Bar & Controls)
  * -----------------------------------------------------------------------------------
  */
 
 .custom-title-bar {
     -fx-background-color: -app-bg-secondary;
-    -fx-alignment: center-left;
-    -fx-padding: 0 2 0 0; /* Ensures right-side gap for a clean finish */
+    -fx-alignment:        center-left;
+    -fx-padding:          0 2 0 0; /* Right-side gap for finish */
 }
 
 .title-label {
-    -fx-text-fill: -app-accent;
+    -fx-text-fill:   -app-accent;
     -fx-font-weight: bold;
-    -fx-font-size: 1.1em;
-    -fx-padding: 0 0 0 15;
+    -fx-font-size:   1.1em;
+    -fx-padding:     0 0 0 15;
 }
 
 .window-button {
     -fx-background-color: transparent;
-    -fx-text-fill: -app-text-muted;
+    -fx-text-fill:        -app-text-muted;
+    -fx-border-color:     transparent;
+    -fx-padding:          10 15;
 
-    /* THE FIX: Absolute flattening of radius and insets to remove corner triangles */
+    /* FIX: Absolute flattening to remove corner artifacts */
     -fx-background-radius: 0;
     -fx-background-insets: 0;
 
-    -fx-border-color: transparent;
-    -fx-padding: 10 15;
-
-    /* Disables focus rings and traversability for a static, professional look */
+    /* UX: Disable focus rings */
     -fx-focus-traversable: false;
-    -fx-focus-color: transparent;
+    -fx-focus-color:       transparent;
     -fx-faint-focus-color: transparent;
 }
 
 .window-button:hover {
     -fx-background-color: rgba(255, 255, 255, 0.1);
-    -fx-text-fill: -app-text-primary;
+    -fx-text-fill:        -app-text-primary;
     -fx-background-radius: 0;
     -fx-background-insets: 0;
 }
 
-/* Specific override for the Close Button using modern warning red (#ef4444) */
+/* Close Button Specifics (Warning Red) */
 .button.window-close:hover {
     -fx-background-color: -app-warning-red;
-    -fx-text-fill: white;
+    -fx-text-fill:        white;
     -fx-background-radius: 0;
     -fx-background-insets: 0;
 }
 
 /* * -----------------------------------------------------------------------------------
- * DIALOG & POPUP ARTIFACT REMOVAL
- * -----------------------------------------------------------------------------------
- */
-
-.dialog-pane {
-    -fx-background-color: -app-bg-main;
-
-    /* THE FIX: Removes default layered backgrounds that cause corner triangles */
-    -fx-background-radius: 0;
-    -fx-background-insets: 0;
-
-    /* Clean custom border for undecorated modal state */
-    -fx-border-color: -app-accent;
-    -fx-border-width: 1.5;
-    -fx-border-radius: 0;
-}
-
-/* Forces inner container to align with outer dialog-pane bounds */
-.dialog-pane > .container {
-    -fx-background-color: -app-bg-main;
-    -fx-background-insets: 0;
-    -fx-background-radius: 0;
-}
-
-.dialog-pane:header .header-panel {
-    -fx-background-color: -app-bg-secondary;
-    -fx-padding: 20;
-    -fx-background-insets: 0;
-}
-
-.dialog-pane:header .header-panel .label {
-    -fx-text-fill: -app-accent;
-    -fx-font-weight: bold;
-}
-
-.dialog-pane .text-field {
-    -fx-background-color: -app-bg-secondary;
-    -fx-text-fill: -app-text-primary;
-    -fx-border-color: -app-border-subtle;
-}
-
-/* * -----------------------------------------------------------------------------------
- * SIDEBAR & NAVIGATION
+ * 4. NAVIGATION & SIDEBAR
  * -----------------------------------------------------------------------------------
  */
 
 .side-navigation {
     -fx-background-color: -app-bg-secondary;
+    -fx-border-color:     -app-border-subtle;
+    -fx-border-width:     0 1 0 0;
+}
+
+.profile-area {
+    -fx-padding:      10 0 25 0;
     -fx-border-color: -app-border-subtle;
-    -fx-border-width: 0 1 0 0;
+    -fx-border-width: 0 0 1 0;
+    -fx-margin:       0 0 15 0;
 }
 
 .nav-button {
     -fx-background-color: transparent;
-    -fx-text-fill: -app-text-muted;
+    -fx-text-fill:        -app-text-muted;
     -fx-background-radius: 8;
-    -fx-padding: 12 15;
+    -fx-padding:          12 15;
 }
 
 .nav-button:hover {
     -fx-background-color: rgba(124, 77, 255, 0.08);
-    -fx-text-fill: -app-text-primary;
+    -fx-text-fill:        -app-text-primary;
 }
 
 .nav-button-active {
     -fx-background-color: rgba(124, 77, 255, 0.15);
-    -fx-text-fill: #ffffff;
-    -fx-font-weight: bold;
-    -fx-border-color: -app-accent;
-    -fx-border-width: 0 0 0 4; /* Left-side highlight bar */
-}
-
-.profile-area {
-    -fx-padding: 10 0 25 0;
-    -fx-border-color: -app-border-subtle;
-    -fx-border-width: 0 0 1 0;
-    -fx-margin: 0 0 15 0;
+    -fx-text-fill:        #ffffff;
+    -fx-font-weight:      bold;
+    -fx-border-color:     -app-accent;
+    -fx-border-width:     0 0 0 4; /* Left highlight bar */
 }
 
 /* * -----------------------------------------------------------------------------------
- * CORE COMPONENTS & CARDS
+ * 5. GENERIC CONTROLS (Buttons, Inputs, Icons)
+ * -----------------------------------------------------------------------------------
+ */
+
+.button {
+    -fx-background-color: #1e293b;
+    -fx-text-fill:        #f8fafc;
+    -fx-border-color:     #334155;
+    -fx-border-radius:    6;
+}
+
+.button:hover {
+    -fx-background-color: -app-accent;
+    -fx-text-fill:        #ffffff;
+}
+
+.text-area {
+    -fx-control-inner-background: -app-bg-secondary;
+    -fx-text-fill:                -app-text-primary;
+    -fx-border-color:             -app-border-subtle;
+}
+
+.ikonli-font-icon {
+    -fx-fill:       -app-accent;
+    -fx-icon-color: -app-accent;
+}
+
+.nav-button-active .ikonli-font-icon,
+.button:hover .ikonli-font-icon {
+    -fx-fill:       #ffffff;
+    -fx-icon-color: #ffffff;
+}
+
+.drop-zone {
+    -fx-background-color: rgba(124, 77, 255, 0.03);
+    -fx-border-color:     rgba(124, 77, 255, 0.4);
+    -fx-border-width:     2;
+    -fx-border-style:     dashed;
+    -fx-border-radius:    10;
+}
+
+.drop-zone:hover, .drop-zone-active {
+    -fx-border-color:     -app-accent;
+    -fx-background-color: rgba(124, 77, 255, 0.1);
+}
+
+/* * -----------------------------------------------------------------------------------
+ * 6. DATA DISPLAYS (Stats Cards, Lists)
  * -----------------------------------------------------------------------------------
  */
 
 .income-stats-box {
     -fx-background-color: -app-bg-card;
     -fx-background-radius: 8;
-    -fx-border-color: -app-border-subtle;
-    -fx-border-width: 1;
-    -fx-padding: 15;
+    -fx-border-color:     -app-border-subtle;
+    -fx-border-width:     1;
+    -fx-padding:          15;
 }
 
 .income-stat-value {
-    -fx-text-fill: -app-accent;
-    -fx-font-size: 1.4em;
+    -fx-text-fill:   -app-accent;
+    -fx-font-size:   1.4em;
     -fx-font-weight: bold;
 }
 
-.drop-zone {
-    -fx-background-color: rgba(124, 77, 255, 0.03);
-    -fx-border-color: rgba(124, 77, 255, 0.4);
-    -fx-border-width: 2;
-    -fx-border-style: dashed;
-    -fx-border-radius: 10;
-}
-
-.drop-zone:hover, .drop-zone-active {
-    -fx-border-color: -app-accent;
-    -fx-background-color: rgba(124, 77, 255, 0.1);
-}
-
-.button {
-    -fx-background-color: #1e293b;
-    -fx-text-fill: #f8fafc;
-    -fx-border-color: #334155;
-    -fx-border-radius: 6;
-}
-
-.button:hover {
-    -fx-background-color: -app-accent;
-    -fx-text-fill: #ffffff;
-}
-
-.text-area {
-    -fx-control-inner-background: -app-bg-secondary;
-    -fx-text-fill: -app-text-primary;
-    -fx-border-color: -app-border-subtle;
-}
-
-.ikonli-font-icon {
-    -fx-fill: -app-accent;
-    -fx-icon-color: -app-accent;
-}
-
-.nav-button-active .ikonli-font-icon,
-.button:hover .ikonli-font-icon {
-    -fx-fill: #ffffff;
-    -fx-icon-color: #ffffff;
-}
-
-/* * -----------------------------------------------------------------------------------
- * LISTVIEW & FAVORITES STABILITY
- * -----------------------------------------------------------------------------------
- */
-
+/* List View Reset (Transparency & Stability) */
 .list-view {
-    -fx-background-color: transparent;
+    -fx-background-color:        transparent;
     -fx-control-inner-background: transparent;
-    -fx-background-insets: 0;
+    -fx-background-insets:       0;
 }
 
 .list-cell {
     -fx-background-color: transparent;
-    -fx-text-fill: -app-text-primary;
-    -fx-padding: 8 0;
+    -fx-text-fill:        -app-text-primary;
+    -fx-padding:          8 0;
 }
 
 .list-cell:filled .income-stats-box {
-    -fx-opacity: 1.0;
+    -fx-opacity:          1.0;
     -fx-background-color: -app-bg-card;
 }
 
@@ -246,20 +230,58 @@
 }
 
 /* * -----------------------------------------------------------------------------------
- * SPECIALIZED VIEWER (RAW JSON DIALOG)
+ * 7. DIALOGS & MODALS
  * -----------------------------------------------------------------------------------
  */
 
-.custom-dialog {
+/* -- Base Dialog Pane (Standard Alerts/Prompts) -- */
+.dialog-pane {
+    -fx-background-color: -app-bg-main;
+
+    /* FIX: Artifact Removal */
+    -fx-background-radius: 0;
+    -fx-background-insets: 0;
+
+    /* Border for Undecorated State */
+    -fx-border-color:  -app-accent;
+    -fx-border-width:  1.5;
+    -fx-border-radius: 0;
+}
+
+.dialog-pane > .container {
+    -fx-background-color:  -app-bg-main;
+    -fx-background-insets: 0;
+    -fx-background-radius: 0;
+}
+
+.dialog-pane:header .header-panel {
+    -fx-background-color:  -app-bg-secondary;
+    -fx-padding:           20;
+    -fx-background-insets: 0;
+}
+
+.dialog-pane:header .header-panel .label {
+    -fx-text-fill:   -app-accent;
+    -fx-font-weight: bold;
+}
+
+.dialog-pane .text-field {
     -fx-background-color: -app-bg-secondary;
-    -fx-border-color: -app-accent;
-    -fx-border-width: 1.5;
-    -fx-background-insets: 0; /* Ensures background matches title bar perfectly */
+    -fx-text-fill:        -app-text-primary;
+    -fx-border-color:     -app-border-subtle;
+}
+
+/* -- Custom Dialog (Raw JSON Viewer) -- */
+.custom-dialog {
+    -fx-background-color:  -app-bg-secondary;
+    -fx-border-color:      -app-accent;
+    -fx-border-width:      1.5;
+    -fx-background-insets: 0;
 }
 
 .custom-dialog .text-area {
     -fx-control-inner-background: -app-bg-secondary;
-    -fx-text-fill: -app-text-primary;
-    -fx-border-color: -app-border-subtle;
-    -fx-font-family: 'Consolas', 'Monospace';
+    -fx-text-fill:                -app-text-primary;
+    -fx-border-color:             -app-border-subtle;
+    -fx-font-family:              'Consolas', 'Monospace';
 }

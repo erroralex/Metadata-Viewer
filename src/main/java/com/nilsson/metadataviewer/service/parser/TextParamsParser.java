@@ -1,63 +1,107 @@
 package com.nilsson.metadataviewer.service.parser;
 
-import java.util.LinkedHashSet;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * specialized parser for A1111, Forge, and Fooocus text blocks.
- */
 public class TextParamsParser {
 
-    public void parse(String raw, Map<String, String> results) {
-        String[] sections = raw.split("\nSteps:");
-        String promptPart = sections[0];
+    // Pattern for A1111/Forge LoRA tags: <lora:MyModel_v1:0.8> or <lora:MyModel:1>
+    private static final Pattern LORA_PATTERN = Pattern.compile("<lora:([^:>]+)(?::([^:>]+))?>", Pattern.CASE_INSENSITIVE);
 
-        // 1. Prompts
-        if (promptPart.contains("Negative prompt:")) {
-            String[] split = promptPart.split("Negative prompt:");
-            results.put("Prompt", split[0].trim());
-            results.put("Negative", split[1].trim());
+    public void parse(String rawData, Map<String, String> results) {
+        if (rawData == null || rawData.isEmpty()) return;
+
+        // 1. Split into chunks (Positive, Negative, Params)
+        String[] parts = rawData.split("\nNegative prompt: ");
+        String positive = parts[0].trim();
+        String negative = "";
+        String params = "";
+
+        if (parts.length > 1) {
+            String[] negParts = parts[1].split("\nSteps: ");
+            negative = negParts[0].trim();
+            if (negParts.length > 1) {
+                params = "Steps: " + negParts[1].trim();
+            }
         } else {
-            results.put("Prompt", promptPart.trim());
+            // Case where there might be no negative prompt but still params
+            String[] paramSplit = rawData.split("\nSteps: ");
+            if (paramSplit.length > 1) {
+                positive = paramSplit[0].trim();
+                params = "Steps: " + paramSplit[1].trim();
+            }
         }
 
-        // 2. Parameters Footer
-        if (sections.length > 1) {
-            String footer = "Steps:" + sections[1];
-            results.put("Model", extractRegex(footer, "Model: ([^,]+)"));
-            results.put("Steps", extractRegex(footer, "Steps: ([^,]+)"));
-            results.put("CFG", extractRegex(footer, "CFG scale: ([^,]+)"));
-            results.put("Seed", extractRegex(footer, "Seed: ([^,]+)"));
+        results.put("Prompt", positive);
+        results.put("Negative", negative);
 
-            results.put("Size", extractRegex(footer, "Size: ([^,]+)"));
-            String sampler = extractRegex(footer, "Sampler: ([^,]+)");
-            String scheduler = extractRegex(footer, "Schedule type: ([^,]+)");
-            results.put("Sampler", (scheduler.equals("N/A") || scheduler.isEmpty()) ? sampler : sampler + " (" + scheduler + ")");
+        // 2. Parse Standard Parameters (Steps, Sampler, etc.)
+        if (!params.isEmpty()) {
+            parseParamLine(params, results);
+        }
 
-            String vae = extractRegex(footer, "VAE: ([^,]+)");
-            if (!vae.equals("N/A")) results.put("VAE", vae);
+        // 3. Extract LoRAs from the Positive Prompt (Crucial for Forge/A1111)
+        extractLorasFromPrompt(positive, results);
+    }
 
-            // Hires Fix
-            String hiresUpscale = extractRegex(footer, "Hires upscale: ([^,]+)");
-            if (!hiresUpscale.equals("N/A")) {
-                String hiresRes = extractRegex(footer, "Hires resize: ([^,]+)");
-                results.put("Hires. fix", hiresUpscale + "x (" + hiresRes + ")");
+    private void parseParamLine(String line, Map<String, String> results) {
+        Map<String, String> map = new HashMap<>();
+        // Split by comma, but be careful not to split inside quotes if any (simple split is usually safe for A1111)
+        String[] pairs = line.split(",\\s*");
+        for (String pair : pairs) {
+            String[] kv = pair.split(":\\s+", 2);
+            if (kv.length == 2) {
+                map.put(kv[0].trim(), kv[1].trim());
             }
+        }
 
-            // Loras
-            Pattern p = Pattern.compile("<lora:([^:]+):");
-            Matcher m = p.matcher(raw);
-            Set<String> loras = new LinkedHashSet<>();
-            while (m.find()) loras.add(m.group(1));
-            results.put("Loras", loras.isEmpty() ? "None" : String.join(", ", loras));
+        // --- Core Params ---
+        if (map.containsKey("Model")) results.put("Model", map.get("Model"));
+        if (map.containsKey("Steps")) results.put("Steps", map.get("Steps"));
+        if (map.containsKey("Seed")) results.put("Seed", map.get("Seed"));
+        if (map.containsKey("Size")) results.put("Size", map.get("Size"));
+        if (map.containsKey("Model hash")) results.put("Model Hash", map.get("Model hash"));
+
+        // --- Sampler & Scheduler ---
+        if (map.containsKey("Sampler")) {
+            String sampler = map.get("Sampler");
+            if (map.containsKey("Schedule type")) {
+                sampler += " (" + map.get("Schedule type") + ")";
+            }
+            results.put("Sampler", sampler);
+        }
+
+        // --- CFG & Distilled CFG (Flux Support) ---
+        if (map.containsKey("CFG scale")) {
+            String cfg = map.get("CFG scale");
+            if (map.containsKey("Distilled CFG Scale")) {
+                cfg += " (Distilled: " + map.get("Distilled CFG Scale") + ")";
+            }
+            results.put("CFG", cfg);
         }
     }
 
-    private String extractRegex(String src, String regex) {
-        Matcher m = Pattern.compile(regex, Pattern.CASE_INSENSITIVE).matcher(src);
-        return m.find() ? m.group(1).trim() : "N/A";
+    private void extractLorasFromPrompt(String prompt, Map<String, String> results) {
+        Matcher m = LORA_PATTERN.matcher(prompt);
+        StringBuilder loraBuilder = new StringBuilder();
+
+        while (m.find()) {
+            String name = m.group(1).trim();
+            String strength = m.group(2); // Can be null
+
+            String entry = name;
+            if (strength != null && !strength.isEmpty() && !strength.equals("1") && !strength.equals("1.0")) {
+                entry += " (" + strength + ")";
+            }
+
+            if (loraBuilder.length() > 0) loraBuilder.append(", ");
+            loraBuilder.append(entry);
+        }
+
+        if (loraBuilder.length() > 0) {
+            results.put("Loras", loraBuilder.toString());
+        }
     }
 }
