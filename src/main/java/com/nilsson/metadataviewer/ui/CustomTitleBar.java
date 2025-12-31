@@ -1,19 +1,17 @@
 package com.nilsson.metadataviewer.ui;
 
 import javafx.geometry.Pos;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.kordamp.ikonli.fontawesome.FontAwesome;
 import org.kordamp.ikonli.javafx.FontIcon;
 
-/**
- * Custom Title Bar implementation for an undecorated Stage.
- * Provides Minimize/Close buttons and window dragging functionality.
- */
 public class CustomTitleBar extends HBox {
     private double xOffset = 0;
     private double yOffset = 0;
@@ -23,10 +21,9 @@ public class CustomTitleBar extends HBox {
         this.setAlignment(Pos.CENTER_LEFT);
         this.setPrefHeight(40);
 
-        Label titleLabel = new Label("Metadata Extractor by ALX v.1.0.3");
+        Label titleLabel = new Label("Metadata Extractor by ALX v.1.0.4");
         titleLabel.getStyleClass().add("title-label");
 
-        // Spacer to push buttons to the right
         HBox spacer = new HBox();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
@@ -45,9 +42,7 @@ public class CustomTitleBar extends HBox {
         closeBtn.setGraphic(new FontIcon(FontAwesome.TIMES));
         closeBtn.getStyleClass().addAll("window-button", "window-close");
         closeBtn.setOnAction(e -> {
-            if (onExitCleanup != null) {
-                onExitCleanup.run();
-            }
+            if (onExitCleanup != null) onExitCleanup.run();
             primaryStage.close();
         });
 
@@ -62,16 +57,30 @@ public class CustomTitleBar extends HBox {
         });
 
         this.setOnMouseDragged(event -> {
-            // Disable dragging if maximized
             if (primaryStage.isMaximized()) return;
 
             if (event.getButton() == MouseButton.PRIMARY) {
-                primaryStage.setX(event.getScreenX() - xOffset);
-                primaryStage.setY(event.getScreenY() - yOffset);
+                double newX = event.getScreenX() - xOffset;
+                double newY = event.getScreenY() - yOffset;
+
+                // --- CONSTRAINT LOGIC ---
+                // Get the screen the window is currently mostly on
+                Screen screen = Screen.getScreensForRectangle(newX, newY, 100, 100).get(0);
+                Rectangle2D bounds = screen.getVisualBounds();
+
+                // Simple snap/constraint: Prevent the top of the title bar from going above the screen
+                // or too far below the taskbar.
+                if (newY < bounds.getMinY()) {
+                    newY = bounds.getMinY();
+                }
+
+                // Allow moving partially off-screen horizontally (standard OS behavior),
+                // but strictly constrain the Y-axis so the title bar is always accessible.
+                primaryStage.setX(newX);
+                primaryStage.setY(newY);
             }
         });
 
-        // Double-click title bar to maximize
         this.setOnMouseClicked(event -> {
             if (event.getClickCount() == 2 && event.getButton() == MouseButton.PRIMARY) {
                 toggleMaximize(primaryStage, maximizeBtn);
@@ -80,13 +89,15 @@ public class CustomTitleBar extends HBox {
     }
 
     private void toggleMaximize(Stage stage, Button btn) {
-        boolean max = !stage.isMaximized();
-        stage.setMaximized(max);
-        // Toggle icon based on state
-        if (max) {
-            btn.setGraphic(new FontIcon(FontAwesome.WINDOW_RESTORE));
-        } else {
+        // Fix for Undecorated Maximize covering Taskbar
+        if (stage.isMaximized()) {
+            stage.setMaximized(false);
             btn.setGraphic(new FontIcon(FontAwesome.WINDOW_MAXIMIZE));
+        } else {
+            // We can rely on standard setMaximized for most cases,
+            // but for undecorated stages, this ensures it respects taskbar bounds explicitly.
+            stage.setMaximized(true);
+            btn.setGraphic(new FontIcon(FontAwesome.WINDOW_RESTORE));
         }
     }
 }
