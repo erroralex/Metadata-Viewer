@@ -7,8 +7,14 @@ import java.util.regex.Pattern;
 
 public class TextParamsParser {
 
-    // Pattern for A1111/Forge LoRA tags: <lora:MyModel_v1:0.8> or <lora:MyModel:1>
+    // Pattern for A1111/Forge LoRA tags
     private static final Pattern LORA_PATTERN = Pattern.compile("<lora:([^:>]+)(?::([^:>]+))?>", Pattern.CASE_INSENSITIVE);
+
+    // Pattern to find the Civitai Resources JSON block
+    private static final Pattern CIVITAI_BLOCK_PATTERN = Pattern.compile("Civitai resources:\\s*(\\[.*?\\])");
+
+    // Pattern to extract Model Name from a JSON-like object string
+    private static final Pattern CIVITAI_MODEL_PATTERN = Pattern.compile("\"type\"\\s*:\\s*\"checkpoint\".*?\"modelName\"\\s*:\\s*\"([^\"]+)\"");
 
     public void parse(String rawData, Map<String, String> results) {
         if (rawData == null || rawData.isEmpty()) return;
@@ -42,13 +48,20 @@ public class TextParamsParser {
             parseParamLine(params, results);
         }
 
-        // 3. Extract LoRAs from the Positive Prompt (Crucial for Forge/A1111)
+        // 3. Extract LoRAs from the Positive Prompt
         extractLorasFromPrompt(positive, results);
+
+        // 4. Fallback: Extract Model from Civitai Resources if missing
+        if (!results.containsKey("Model")) {
+            extractCivitaiResources(rawData, results);
+        }
     }
 
     private void parseParamLine(String line, Map<String, String> results) {
         Map<String, String> map = new HashMap<>();
-        // Split by comma, but be careful not to split inside quotes if any (simple split is usually safe for A1111)
+
+        // Note: The simple split by comma works for standard params.
+        // It might fragment the JSON at the end, but that's fine because we extract JSON separately via Regex.
         String[] pairs = line.split(",\\s*");
         for (String pair : pairs) {
             String[] kv = pair.split(":\\s+", 2);
@@ -57,23 +70,31 @@ public class TextParamsParser {
             }
         }
 
-        // --- Core Params ---
         if (map.containsKey("Model")) results.put("Model", map.get("Model"));
         if (map.containsKey("Steps")) results.put("Steps", map.get("Steps"));
         if (map.containsKey("Seed")) results.put("Seed", map.get("Seed"));
         if (map.containsKey("Size")) results.put("Size", map.get("Size"));
         if (map.containsKey("Model hash")) results.put("Model Hash", map.get("Model hash"));
+        if (map.containsKey("Clip skip")) results.put("Clip Skip", map.get("Clip skip"));
 
-        // --- Sampler & Scheduler ---
+        // --- Sampler & Scheduler Logic ---
         if (map.containsKey("Sampler")) {
             String sampler = map.get("Sampler");
+            String scheduler = "";
+
             if (map.containsKey("Schedule type")) {
-                sampler += " (" + map.get("Schedule type") + ")";
+                scheduler = map.get("Schedule type");
+            } else if (map.containsKey("Scheduler")) {
+                scheduler = map.get("Scheduler");
+            }
+
+            if (!scheduler.isEmpty()) {
+                sampler += " (" + scheduler + ")";
             }
             results.put("Sampler", sampler);
         }
 
-        // --- CFG & Distilled CFG (Flux Support) ---
+        // --- CFG & Distilled CFG ---
         if (map.containsKey("CFG scale")) {
             String cfg = map.get("CFG scale");
             if (map.containsKey("Distilled CFG Scale")) {
@@ -102,6 +123,17 @@ public class TextParamsParser {
 
         if (loraBuilder.length() > 0) {
             results.put("Loras", loraBuilder.toString());
+        }
+    }
+
+    private void extractCivitaiResources(String rawData, Map<String, String> results) {
+        Matcher blockMatcher = CIVITAI_BLOCK_PATTERN.matcher(rawData);
+        if (blockMatcher.find()) {
+            String jsonBlock = blockMatcher.group(1);
+            Matcher modelMatcher = CIVITAI_MODEL_PATTERN.matcher(jsonBlock);
+            if (modelMatcher.find()) {
+                results.put("Model", modelMatcher.group(1).trim());
+            }
         }
     }
 }
