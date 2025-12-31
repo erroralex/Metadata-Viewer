@@ -1,10 +1,13 @@
 package com.nilsson.metadataviewer;
 
 import com.nilsson.metadataviewer.ui.CustomTitleBar;
+import com.nilsson.metadataviewer.ui.ResizeHelper; // Ensure you have this import
 import com.nilsson.metadataviewer.ui.RootLayout;
 import javafx.application.Application;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
+import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
 
@@ -14,8 +17,9 @@ import javafx.stage.StageStyle;
  */
 public class MetadataApp extends Application {
 
-    private static final int WIDTH = 1280;
-    private static final int HEIGHT = 1024;
+    // Default target size, but we will limit this based on screen size below
+    private static final int TARGET_WIDTH = 1280;
+    private static final int TARGET_HEIGHT = 1024;
 
     @Override
     public void start(Stage primaryStage) {
@@ -34,7 +38,15 @@ public class MetadataApp extends Application {
             mainWrapper.setTop(titleBar);
             mainWrapper.setCenter(rootLayout);
 
-            Scene scene = new Scene(mainWrapper, WIDTH, HEIGHT);
+            // --- SMART SIZING LOGIC ---
+            // Get visual bounds (screen size minus taskbar)
+            Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
+
+            // Use the smaller of: Default Target OR 90% of Screen Size
+            double appWidth = Math.min(TARGET_WIDTH, screenBounds.getWidth() * 0.90);
+            double appHeight = Math.min(TARGET_HEIGHT, screenBounds.getHeight() * 0.90);
+
+            Scene scene = new Scene(mainWrapper, appWidth, appHeight);
 
             // Load Global CSS (Dark Theme by default)
             String cssPath = getClass().getResource("/dark-theme.css") != null
@@ -44,12 +56,22 @@ public class MetadataApp extends Application {
                 scene.getStylesheets().add(cssPath);
             }
 
-            com.nilsson.metadataviewer.ui.ResizeHelper.addResizeListener(primaryStage);
+            // Enable Resizing
+            ResizeHelper.addResizeListener(primaryStage);
 
             primaryStage.setScene(scene);
             primaryStage.setTitle("Metadata Extractor by ALX");
-            primaryStage.getIcons().add(new javafx.scene.image.Image(getClass().getResource("/icon.png").toExternalForm()));
+            if (getClass().getResource("/icon.png") != null) {
+                primaryStage.getIcons().add(new javafx.scene.image.Image(getClass().getResource("/icon.png").toExternalForm()));
+            }
+
+            // Show first to validate dimensions
             primaryStage.show();
+
+            // --- CENTER ON SCREEN ---
+            // Manually center the stage within the visual bounds
+            primaryStage.setX((screenBounds.getWidth() - appWidth) / 2 + screenBounds.getMinX());
+            primaryStage.setY((screenBounds.getHeight() - appHeight) / 2 + screenBounds.getMinY());
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -57,7 +79,7 @@ public class MetadataApp extends Application {
     }
 
     public static void main(String[] args) {
-        // FORCE UTF-8 ENCODING to fix issues on non-English Windows (Hungarian, etc.)
+        // FORCE UTF-8 ENCODING
         System.setProperty("file.encoding", "UTF-8");
         System.setProperty("sun.jnu.encoding", "UTF-8");
         System.setProperty("sun.stdout.encoding", "UTF-8");
