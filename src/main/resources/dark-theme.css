@@ -205,6 +205,16 @@
     -fx-font-weight: bold;
 }
 
+/* Specific styling for selectable fields inside stats cards */
+.selectable-stat-field {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-text-fill: -app-accent; /* Match income-stat-value color */
+    -fx-font-size: 1.4em;       /* Match income-stat-value size */
+    -fx-font-weight: bold;
+}
+
 /* List View Reset (Transparency & Stability) */
 .list-view {
     -fx-background-color:        transparent;
