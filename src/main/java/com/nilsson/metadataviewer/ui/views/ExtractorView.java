@@ -10,6 +10,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.Clipboard;
+import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -32,14 +34,15 @@ public class ExtractorView extends ScrollPane {
     private final TextArea promptText = new TextArea();
     private final TextArea negativePromptText = new TextArea();
 
-    private final Label modelVal = new Label("-");
-    private final Label softwareVal = new Label("-");
-    private final Label samplerVal = new Label("-");
-    private final Label stepsVal = new Label("-");
-    private final Label cfgVal = new Label("-");
-    private final Label seedVal = new Label("-");
-    private final Label sizeVal = new Label("-");
-    private final Label lorasVal = new Label("-");
+    // Selectable TextFields
+    private final TextField modelVal = createSelectableField("-");
+    private final TextField softwareVal = createSelectableField("-");
+    private final TextField samplerVal = createSelectableField("-");
+    private final TextField stepsVal = createSelectableField("-");
+    private final TextField cfgVal = createSelectableField("-");
+    private final TextField seedVal = createSelectableField("-");
+    private final TextField sizeVal = createSelectableField("-");
+    private final TextField lorasVal = createSelectableField("-");
 
     private final ImageView previewImageView = new ImageView();
     private final StackPane previewContainer = new StackPane();
@@ -71,7 +74,7 @@ public class ExtractorView extends ScrollPane {
         previewWrapper.setAlignment(Pos.TOP_CENTER);
 
         Label fullScreenHint = new Label("Click to Fullscreen");
-        fullScreenHint.setStyle("-fx-font-size: 10px; -fx-text-fill: #94a3b8;");
+        fullScreenHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -app-text-muted;");
 
         previewWrapper.getChildren().addAll(fullScreenHint, previewContainer, createSaveButton(), createRawButton());
 
@@ -83,22 +86,34 @@ public class ExtractorView extends ScrollPane {
                 createPromptSection("Negative Prompt", negativePromptText, 60)
         );
 
+        // --- Stats Grid ---
         VBox statsWrapper = new VBox(12);
 
-        HBox row1 = new HBox(12,
-                createStatCard("Model", modelVal, FontAwesome.CUBE),
-                createStatCard("Software", softwareVal, FontAwesome.TERMINAL),
-                createStatCard("Sampler", samplerVal, FontAwesome.SLIDERS)
-        );
+        // ROW 1: Model (Expands) + Software
+        VBox modelCard = createStatCard("Model", modelVal, FontAwesome.CUBE);
+        VBox softwareCard = createStatCard("Software", softwareVal, FontAwesome.TERMINAL);
 
-        HBox row2 = new HBox(12,
-                createStatCard("Steps", stepsVal, FontAwesome.TASKS),
-                createStatCard("CFG Scale", cfgVal, FontAwesome.ADJUST),
-                createStatCard("Seed", seedVal, FontAwesome.KEY),
-                createStatCard("Image Size", sizeVal, FontAwesome.IMAGE)
-        );
+        HBox.setHgrow(modelCard, Priority.ALWAYS);
+        HBox.setHgrow(softwareCard, Priority.NEVER);
+        softwareCard.setMinWidth(100);
 
-        VBox.setVgrow(row1, Priority.ALWAYS);
+        HBox row1 = new HBox(12, modelCard, softwareCard);
+
+        // ROW 2: Optimized Layout
+        VBox stepsCard = createStatCard("Steps", stepsVal, FontAwesome.TASKS);
+        VBox cfgCard = createStatCard("CFG", cfgVal, FontAwesome.ADJUST);
+        VBox seedCard = createStatCard("Seed", seedVal, FontAwesome.KEY);
+        VBox samplerCard = createStatCard("Sampler", samplerVal, FontAwesome.SLIDERS);
+        VBox sizeCard = createStatCard("Size", sizeVal, FontAwesome.IMAGE);
+
+        stepsCard.setPrefWidth(90);
+        cfgCard.setPrefWidth(90);
+        HBox.setHgrow(seedCard, Priority.ALWAYS); // Seed Expands
+        samplerCard.setPrefWidth(140);
+        sizeCard.setPrefWidth(140);
+
+        HBox row2 = new HBox(12, stepsCard, cfgCard, seedCard, samplerCard, sizeCard);
+
         statsWrapper.getChildren().addAll(row1, row2, createStatCard("Loras Used", lorasVal, FontAwesome.PUZZLE_PIECE));
 
         container.getChildren().addAll(title, dropSection, promptsWrapper, statsWrapper);
@@ -107,6 +122,8 @@ public class ExtractorView extends ScrollPane {
 
     public void populateFromFavorite(FavoriteData fav) {
         this.lastData = new HashMap<>();
+        if (fav == null) return;
+
         lastData.put("Raw", fav.getRaw());
         lastData.put("Prompt", fav.getPrompt());
         lastData.put("Negative", fav.getNegative());
@@ -125,7 +142,9 @@ public class ExtractorView extends ScrollPane {
         if (fav.getThumbnailPath() != null) {
             File thumbFile = new File(fav.getThumbnailPath());
             this.lastFile = thumbFile.exists() ? thumbFile : null;
-            previewImageView.setImage(new Image("file:" + fav.getThumbnailPath()));
+            try {
+                previewImageView.setImage(new Image("file:" + fav.getThumbnailPath()));
+            } catch (Exception e) { /* ignore */ }
         }
     }
 
@@ -169,9 +188,7 @@ public class ExtractorView extends ScrollPane {
         scene.setFill(Color.TRANSPARENT);
 
         scene.setOnKeyPressed(e -> {
-            if (e.getCode() == KeyCode.ESCAPE) {
-                stage.close();
-            }
+            if (e.getCode() == KeyCode.ESCAPE) stage.close();
         });
 
         stage.setScene(scene);
@@ -191,13 +208,9 @@ public class ExtractorView extends ScrollPane {
 
             TextInputDialog tid = new TextInputDialog("Prompt Name");
             tid.initStyle(StageStyle.UNDECORATED);
-
             DialogPane pane = tid.getDialogPane();
             pane.getStyleClass().add("custom-dialog");
-            if (this.getScene() != null) {
-                pane.getStylesheets().addAll(this.getScene().getStylesheets());
-            }
-
+            if (this.getScene() != null) pane.getStylesheets().addAll(this.getScene().getStylesheets());
             setupDialogDragging(pane);
 
             tid.showAndWait().ifPresent(name -> {
@@ -222,12 +235,10 @@ public class ExtractorView extends ScrollPane {
                         lastFile != null ? lastFile.getAbsolutePath() : null
                 );
 
-                // Use the new saveImage method passing the ACTUAL FILE, not the view
                 if (lastFile != null && lastFile.exists()) {
                     String savedPath = FavoriteRegistry.getInstance().saveImage(lastFile, fav.getId());
-                    fav.setThumbnailPath(savedPath); // We reuse this field, but it points to the full copy now
+                    fav.setThumbnailPath(savedPath);
                 }
-
                 FavoriteRegistry.getInstance().addFavorite(fav);
             });
         });
@@ -242,15 +253,11 @@ public class ExtractorView extends ScrollPane {
 
         btnRaw.setOnAction(e -> {
             if (lastData == null || !lastData.containsKey("Raw")) return;
-
             Dialog<ButtonType> dialog = new Dialog<>();
             dialog.initStyle(StageStyle.UNDECORATED);
-
             DialogPane pane = dialog.getDialogPane();
             pane.getStyleClass().add("custom-dialog");
-            if (this.getScene() != null) {
-                pane.getStylesheets().addAll(this.getScene().getStylesheets());
-            }
+            if (this.getScene() != null) pane.getStylesheets().addAll(this.getScene().getStylesheets());
 
             TextArea rawArea = new TextArea(lastData.get("Raw"));
             rawArea.setEditable(false);
@@ -263,7 +270,6 @@ public class ExtractorView extends ScrollPane {
             VBox content = new VBox(10, new Label("Raw Image Metadata"), rawArea, closeBtn);
             content.setPadding(new Insets(20));
             pane.setContent(content);
-
             setupDialogDragging(pane);
             dialog.showAndWait();
         });
@@ -300,8 +306,8 @@ public class ExtractorView extends ScrollPane {
         copyBtn.setTooltip(new Tooltip("Copy to Clipboard"));
 
         copyBtn.setOnAction(e -> {
-            javafx.scene.input.Clipboard clipboard = javafx.scene.input.Clipboard.getSystemClipboard();
-            javafx.scene.input.ClipboardContent content = new javafx.scene.input.ClipboardContent();
+            Clipboard clipboard = Clipboard.getSystemClipboard();
+            ClipboardContent content = new ClipboardContent();
             content.putString(area.getText());
             clipboard.setContent(content);
         });
@@ -320,7 +326,15 @@ public class ExtractorView extends ScrollPane {
         dz.getStyleClass().add("drop-zone");
         dz.setMinHeight(160);
         dz.setAlignment(Pos.CENTER);
-        dz.getChildren().addAll(new FontIcon(FontAwesome.CLOUD_UPLOAD), new Label("Drop Image Here"));
+
+        Label dropLabel = new Label("Drop Image Here");
+        // Inline style ONLY for text color to reference CSS variable safely
+        dropLabel.setStyle("-fx-text-fill: -app-text-muted; -fx-font-size: 14px;");
+
+        FontIcon icon = new FontIcon(FontAwesome.CLOUD_UPLOAD);
+        icon.setIconSize(32);
+
+        dz.getChildren().addAll(icon, dropLabel);
 
         dz.setOnDragOver(e -> {
             if (e.getDragboard().hasFiles()) {
@@ -330,6 +344,7 @@ public class ExtractorView extends ScrollPane {
             e.consume();
         });
         dz.setOnDragExited(e -> dz.getStyleClass().remove("drop-zone-active"));
+
         dz.setOnDragDropped(e -> {
             if (e.getDragboard().hasFiles()) {
                 process(e.getDragboard().getFiles().get(0));
@@ -341,19 +356,35 @@ public class ExtractorView extends ScrollPane {
         return dz;
     }
 
-    private VBox createStatCard(String title, Label val, org.kordamp.ikonli.Ikon icon) {
+    private TextField createSelectableField(String text) {
+        TextField field = new TextField(text);
+        field.setEditable(false);
+        field.getStyleClass().add("selectable-stat-field");
+        // Ensure transparency so card background shows
+        field.setStyle("-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0;");
+        return field;
+    }
+
+    private VBox createStatCard(String title, TextField valField, org.kordamp.ikonli.Ikon icon) {
         VBox card = new VBox(5);
         card.getStyleClass().add("income-stats-box");
-        card.setPadding(new Insets(10, 15, 10, 15));
-        card.getChildren().addAll(new HBox(8, new FontIcon(icon), new Label(title)), val);
-        val.getStyleClass().add("income-stat-value");
-        val.setWrapText(true);
+
+        HBox header = new HBox(8);
+        header.setAlignment(Pos.CENTER_LEFT);
+
+        FontIcon fi = new FontIcon(icon);
+
+        Label titleLbl = new Label(title);
+        titleLbl.setStyle("-fx-text-fill: -app-text-muted; -fx-font-size: 0.9em;");
+
+        header.getChildren().addAll(fi, titleLbl);
+        card.getChildren().addAll(header, valField);
+
         return card;
     }
 
     public void process(File f) {
         this.lastFile = f;
-
         promptText.setText("Parsing metadata...");
         this.getScene().setCursor(javafx.scene.Cursor.WAIT);
 

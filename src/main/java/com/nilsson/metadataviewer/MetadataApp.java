@@ -1,7 +1,7 @@
 package com.nilsson.metadataviewer;
 
 import com.nilsson.metadataviewer.ui.CustomTitleBar;
-import com.nilsson.metadataviewer.ui.ResizeHelper; // Ensure you have this import
+import com.nilsson.metadataviewer.ui.ResizeHelper;
 import com.nilsson.metadataviewer.ui.RootLayout;
 import javafx.application.Application;
 import javafx.geometry.Rectangle2D;
