@@ -19,6 +19,7 @@ public class SideNavigation extends VBox {
     private Button btnExtractor;
     private Button btnFavorites;
     private Button btnScrub;
+    private Button btnSort; // NEW BUTTON
 
     public SideNavigation(RootLayout rootLayout) {
         this.rootLayout = rootLayout;
@@ -70,6 +71,13 @@ public class SideNavigation extends VBox {
             setActiveButton(btnScrub);
         });
 
+        // 4. Speed Sorter
+        btnSort = createNavButton("Speed Sorter", FontAwesome.BOLT);
+        btnSort.setOnAction(e -> {
+            rootLayout.navigateToSpeedSorter();
+            setActiveButton(btnSort);
+        });
+
         // Bottom Spacer
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
@@ -94,7 +102,7 @@ public class SideNavigation extends VBox {
         btnExit.setOnAction(e -> System.exit(0));
 
         // Add to children
-        this.getChildren().addAll(btnExtractor, btnFavorites, btnScrub, spacer, lowerLogoArea, btnExit);
+        this.getChildren().addAll(btnExtractor, btnFavorites, btnScrub, btnSort, spacer, lowerLogoArea, btnExit);
 
         // Default Active State
         setActiveButton(btnExtractor);
@@ -103,6 +111,7 @@ public class SideNavigation extends VBox {
     public void highlightExtractor() { setActiveButton(btnExtractor); }
     public void highlightFavorites() { setActiveButton(btnFavorites); }
     public void highlightScrub() { setActiveButton(btnScrub); }
+    public void highlightSort() { setActiveButton(btnSort); }
 
     private Button createNavButton(String text, org.kordamp.ikonli.Ikon iconCode) {
         Button btn = new Button(text);

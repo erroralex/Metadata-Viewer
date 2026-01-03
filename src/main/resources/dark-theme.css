@@ -1,14 +1,10 @@
 /* * ===================================================================================
  * METADATA VIEWER - APPLICATION THEME
- * Version: 2.5 (Ultimate Artifact Removal & Modern Warning Red)
+ * Version: 2.8 (Unified Backgrounds)
  * Theme:   Modern Dark & Purple
  * ===================================================================================
  */
 
-/* * -----------------------------------------------------------------------------------
- * 1. ROOT VARIABLES & GLOBAL BASE
- * -----------------------------------------------------------------------------------
- */
 .root {
     /* --- Color Palette --- */
     -app-bg-main:       #0b0e14;
@@ -32,11 +28,17 @@
 }
 
 /* * -----------------------------------------------------------------------------------
- * 2. TYPOGRAPHY & HEADERS
+ * 2. LAYOUT CONTAINERS
  * -----------------------------------------------------------------------------------
  */
 
-/* Main Page Headers (e.g. "AI Metadata Extractor") */
+/* UNIFIED VIEW BACKGROUND
+*/
+.content-view {
+    -fx-background-color: -app-bg-card;
+    -fx-background:       -app-bg-card; /* For ScrollPanes */
+}
+
 .content-title {
     -fx-text-fill:   -app-accent;
     -fx-font-weight: bold;
@@ -45,7 +47,6 @@
     -fx-effect:      dropshadow(three-pass-box, rgba(0,0,0,0.3), 0, 0, 0, 1);
 }
 
-/* Section Sub-headers */
 .app-title {
     -fx-text-fill:   -app-text-primary;
     -fx-font-weight: bold;
@@ -53,14 +54,14 @@
 }
 
 /* * -----------------------------------------------------------------------------------
- * 3. WINDOW CHROME (Title Bar & Controls)
+ * 3. WINDOW CHROME
  * -----------------------------------------------------------------------------------
  */
 
 .custom-title-bar {
     -fx-background-color: -app-bg-secondary;
     -fx-alignment:        center-left;
-    -fx-padding:          0 2 0 0; /* Right-side gap for finish */
+    -fx-padding:          0 2 0 0;
 }
 
 .title-label {
@@ -75,30 +76,19 @@
     -fx-text-fill:        -app-text-muted;
     -fx-border-color:     transparent;
     -fx-padding:          10 15;
-
-    /* FIX: Absolute flattening to remove corner artifacts */
     -fx-background-radius: 0;
     -fx-background-insets: 0;
-
-    /* UX: Disable focus rings */
     -fx-focus-traversable: false;
-    -fx-focus-color:       transparent;
-    -fx-faint-focus-color: transparent;
 }
 
 .window-button:hover {
     -fx-background-color: rgba(255, 255, 255, 0.1);
     -fx-text-fill:        -app-text-primary;
-    -fx-background-radius: 0;
-    -fx-background-insets: 0;
 }
 
-/* Close Button Specifics (Warning Red) */
 .button.window-close:hover {
     -fx-background-color: -app-warning-red;
     -fx-text-fill:        white;
-    -fx-background-radius: 0;
-    -fx-background-insets: 0;
 }
 
 /* * -----------------------------------------------------------------------------------
@@ -136,11 +126,11 @@
     -fx-text-fill:        #ffffff;
     -fx-font-weight:      bold;
     -fx-border-color:     -app-accent;
-    -fx-border-width:     0 0 0 4; /* Left highlight bar */
+    -fx-border-width:     0 0 0 4;
 }
 
 /* * -----------------------------------------------------------------------------------
- * 5. GENERIC CONTROLS (Buttons, Inputs, Icons)
+ * 5. GENERIC CONTROLS
  * -----------------------------------------------------------------------------------
  */
 
@@ -187,7 +177,7 @@
 }
 
 /* * -----------------------------------------------------------------------------------
- * 6. DATA DISPLAYS (Stats Cards, Lists)
+ * 6. DATA DISPLAYS
  * -----------------------------------------------------------------------------------
  */
 
@@ -205,17 +195,15 @@
     -fx-font-weight: bold;
 }
 
-/* Specific styling for selectable fields inside stats cards */
 .selectable-stat-field {
     -fx-background-color: transparent;
     -fx-background-insets: 0;
     -fx-padding: 0;
-    -fx-text-fill: -app-accent; /* Match income-stat-value color */
-    -fx-font-size: 1.4em;       /* Match income-stat-value size */
+    -fx-text-fill: -app-accent;
+    -fx-font-size: 1.4em;
     -fx-font-weight: bold;
 }
 
-/* List View Reset (Transparency & Stability) */
 .list-view {
     -fx-background-color:        transparent;
     -fx-control-inner-background: transparent;
@@ -244,15 +232,10 @@
  * -----------------------------------------------------------------------------------
  */
 
-/* -- Base Dialog Pane (Standard Alerts/Prompts) -- */
 .dialog-pane {
     -fx-background-color: -app-bg-main;
-
-    /* FIX: Artifact Removal */
     -fx-background-radius: 0;
     -fx-background-insets: 0;
-
-    /* Border for Undecorated State */
     -fx-border-color:  -app-accent;
     -fx-border-width:  1.5;
     -fx-border-radius: 0;
@@ -260,14 +243,11 @@
 
 .dialog-pane > .container {
     -fx-background-color:  -app-bg-main;
-    -fx-background-insets: 0;
-    -fx-background-radius: 0;
 }
 
 .dialog-pane:header .header-panel {
     -fx-background-color:  -app-bg-secondary;
     -fx-padding:           20;
-    -fx-background-insets: 0;
 }
 
 .dialog-pane:header .header-panel .label {
@@ -281,7 +261,6 @@
     -fx-border-color:     -app-border-subtle;
 }
 
-/* -- Custom Dialog (Raw JSON Viewer) -- */
 .custom-dialog {
     -fx-background-color:  -app-bg-secondary;
     -fx-border-color:      -app-accent;

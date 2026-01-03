@@ -4,6 +4,7 @@ import com.nilsson.metadataviewer.model.FavoriteData;
 import com.nilsson.metadataviewer.ui.views.ExtractorView;
 import com.nilsson.metadataviewer.ui.views.FavoritesView;
 import com.nilsson.metadataviewer.ui.views.ScrubView;
+import com.nilsson.metadataviewer.ui.views.SpeedSorterView;
 import javafx.scene.Node;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
@@ -13,14 +14,16 @@ public class RootLayout extends BorderPane {
 
     // Persistent Views
     private final ExtractorView extractorView;
-    private final ScrubView scrubView; // New Persistent View
+    private final ScrubView scrubView;
+    private final SpeedSorterView speedSorterView; // New Persistent View
 
     public RootLayout(Stage stage, CustomTitleBar titleBar) {
         this.getStyleClass().add("root-layout");
 
         // Initialize views ONCE
         this.extractorView = new ExtractorView();
-        this.scrubView = new ScrubView(); // Init
+        this.scrubView = new ScrubView();
+        this.speedSorterView = new SpeedSorterView(); // Init
 
         this.sideNav = new SideNavigation(this);
         this.sideNav.setPrefWidth(260);
@@ -43,13 +46,21 @@ public class RootLayout extends BorderPane {
     }
 
     public void navigateToFavorites(FavoriteData data) {
-        // Favorites view is usually refreshed on load, so we can create new or reuse
+        // Favorites view is usually refreshed on load, so we create new or reuse
         setContent(new FavoritesView(this));
+        sideNav.highlightFavorites();
     }
 
-    // New Navigation Method
     public void navigateToScrub() {
         setContent(this.scrubView);
         sideNav.highlightScrub();
+    }
+
+    // New Navigation Method
+    public void navigateToSpeedSorter() {
+        setContent(this.speedSorterView);
+        sideNav.highlightSort();
+        // Request focus so keyboard shortcuts work immediately
+        this.speedSorterView.requestFocus();
     }
 }
