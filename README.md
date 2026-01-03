@@ -5,23 +5,23 @@
 ![CSS](https://img.shields.io/badge/CSS-Obsidian_Indigo-1572B6?style=for-the-badge&logo=css3&logoColor=white)
 ![Jackson](https://img.shields.io/badge/Persistence-Jackson_JSON-2f2f2f?style=for-the-badge&logo=json&logoColor=white)
 
-A high-performance JavaFX desktop application designed to unify generation metadata across the fragmented AI image generation ecosystem. It provides instant extraction, **privacy scrubbing**, private local persistence, and deep-node inspection for professional artists and developers.
+A high-performance JavaFX desktop application designed to unify generation metadata across the fragmented AI image generation ecosystem. It provides instant extraction, **rapid-fire culling**, **privacy scrubbing**, portable local persistence, and deep-node inspection for professional artists and developers.
 
 ---
 
 ## 📸 Interface
 
 ### Core Workflow
-| Extractor Portal | Favorites Library |
+| Extractor Portal | Speed Sorter ⚡ |
 |:---:|:---:|
-| <img src="src/main/resources/screenshots/extractor_view.png" width="400" alt="Extractor View"> | <img src="src/main/resources/screenshots/favorites_view.png" width="400" alt="Favorites Library"> |
-| *Drag & Drop Extraction & Fullscreen Preview* | *Persistent Card-Based Library* |
+| <img src="src/main/resources/screenshots/extractor_view.png" width="400" alt="Extractor View"> | <img src="src/main/resources/screenshots/speedsorter_view.png" width="400" alt="Speed Sorter"> |
+| *Drag & Drop Extraction & Fullscreen Preview* | *Rapid Organization with Keyboard Shortcuts* |
 
-### Privacy Tools
-| Metadata Scrubber |
-|:---:|
-| <img src="src/main/resources/screenshots/scrub_view.png" width="400" alt="Scrubber View"> |
-| *Strip EXIF/PNG chunks and export clean copies* |
+### Library & Privacy
+| Favorites Library | Metadata Scrubber |
+|:---:|:---:|
+| <img src="src/main/resources/screenshots/favorites_view.png" width="400" alt="Favorites Library"> | <img src="src/main/resources/screenshots/scrub_view.png" width="400" alt="Scrubber View"> |
+| *Portable Card-Based Persistence* | *Strip EXIF/PNG chunks for privacy* |
 
 <details>
 <summary><b>View Advanced Features</b></summary>
@@ -38,15 +38,19 @@ A high-performance JavaFX desktop application designed to unify generation metad
 
 ## ✨ Key Features
 
+* **Speed Sorting (New):** A high-velocity workflow for organizing large datasets.
+    * **Hotkeys 1-5:** Instantly move images to pre-assigned folders.
+    * **Spacebar Navigation:** Rapidly skip through sets.
+    * **Deep Analysis:** One-click fullscreen mode for checking fine details before sorting.
+* **Fully Portable:** The application now stores all favorites and thumbnails in a local `/data` directory. Move the folder to a USB drive or another PC, and your library travels with you.
 * **Universal Compatibility:** Intelligent parsing for **ComfyUI** (API & Workflow), **SwarmUI**, **A1111**, **Forge**, **InvokeAI**, **NovelAI**, and **SD-Matrix**.
 * **Metadata Scrubbing:** A dedicated view to strip all hidden metadata (Prompts, Workflow, EXIF) and export clean images for safe sharing.
 * **Smart Parsing Engine:**
     * **Content-Aware Detection:** Distinguishes between API execution blocks and visual workflow graphs to prevent "N/A" errors.
-    * **Deep Recursion:** Identifies custom nodes (e.g., *Power LoRA Loader*), resolution inputs, and nested JSON structures.
-    * **Physical Fallback:** Reads physical file headers to guarantee valid image dimensions even when metadata is missing.
-* **High-Fidelity Persistence:** Saving a favorite now creates a **full-quality copy** of the original image, preserving 100% of the metadata and pixels in your local library.
+    * **Deep Recursion:** Identifies custom nodes (e.g., *Power LoRA Loader*, *Qwen*), resolution inputs, and nested JSON structures.
+    * **Physical Fallback:** Reads physical file headers to guarantee valid image dimensions even when metadata is missing or malformed.
 * **Interactive UI:**
-    * **Fullscreen Preview:** Click any thumbnail (Extractor or Scrubber) for a modal, high-res inspection view.
+    * **Fullscreen Preview:** Click any thumbnail (Extractor, Sorter, or Scrubber) for a modal, high-res inspection view.
     * **Raw Inspector:** Debug non-standard outputs with a syntax-highlighted JSON viewer.
 * **Lightweight Performance:** Programmatic JavaFX (No FXML) ensures near-instant launch times and zero-lag image processing.
 
@@ -57,6 +61,7 @@ A high-performance JavaFX desktop application designed to unify generation metad
 The application implements a **Model-View-Service** (MVS) architecture to decouple business logic from the interface.
 
 * **Singleton Pattern:** Thread-safe global access to image registries and persistent views.
+* **Portable Persistence:** Custom JSON serialization logic that maintains relative paths for a self-contained environment.
 * **Heuristic Strategy Pattern:** Adaptive parsing strategies that score metadata chunks to select the most relevant generation data.
 * **Reactive Binding:** JavaFX properties ensure real-time UI updates and responsive text wrapping.
 * **Technology Stack:** Java 8 (Liberica JDK Full), Jackson (JSON Serialization), Metadata Extractor (Drew Noakes), Ikonli (FontAwesome).
