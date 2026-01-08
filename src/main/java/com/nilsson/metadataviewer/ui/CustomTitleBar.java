@@ -21,7 +21,7 @@ public class CustomTitleBar extends HBox {
         this.setAlignment(Pos.CENTER_LEFT);
         this.setPrefHeight(40);
 
-        Label titleLabel = new Label("Metadata Extractor by ALX v.1.0.7");
+        Label titleLabel = new Label("Metadata Extractor by ALX v.1.0.8");
         titleLabel.getStyleClass().add("title-label");
 
         HBox spacer = new HBox();
