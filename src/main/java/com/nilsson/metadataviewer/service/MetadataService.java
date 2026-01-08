@@ -182,7 +182,8 @@ public class MetadataService {
             }
             results.put("Software", software);
 
-            findKeysRecursively(root, results);
+            // Pass software type to restrict strategies
+            findKeysRecursively(root, results, software);
 
             if (!results.containsKey("Prompt") || results.get("Prompt").isEmpty()) {
                 results.put("Prompt", findLongestText(root));
@@ -192,19 +193,26 @@ public class MetadataService {
         }
     }
 
-    private void findKeysRecursively(JsonNode node, Map<String, String> results) {
+    private void findKeysRecursively(JsonNode node, Map<String, String> results, String software) {
         if (node.isObject()) {
             Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
             while (fields.hasNext()) {
                 Map.Entry<String, JsonNode> entry = fields.next();
+
                 for (MetadataStrategy strategy : jsonStrategies) {
+                    // FIX: If ComfyUI is detected, ONLY allow ComfyUIStrategy to run.
+                    // This prevents CommonStrategy from scraping garbage from widgets.
+                    if (software.contains("ComfyUI") && !(strategy instanceof ComfyUIStrategy)) {
+                        continue;
+                    }
                     strategy.extract(entry.getKey().toLowerCase(), entry.getValue(), node, results);
                 }
-                findKeysRecursively(entry.getValue(), results);
+
+                findKeysRecursively(entry.getValue(), results, software);
             }
         } else if (node.isArray()) {
             for (JsonNode child : node) {
-                findKeysRecursively(child, results);
+                findKeysRecursively(child, results, software);
             }
         }
     }
@@ -218,5 +226,17 @@ public class MetadataService {
             }
         });
         return longest[0];
+    }
+
+    public static javafx.scene.image.Image loadFxImage(java.io.File file) {
+        try {
+            java.awt.image.BufferedImage bImg = javax.imageio.ImageIO.read(file);
+            if (bImg != null) {
+                return javafx.embed.swing.SwingFXUtils.toFXImage(bImg, null);
+            }
+        } catch (Exception e) {
+            System.err.println("ImageIO failed for " + file.getName() + ": " + e.getMessage());
+        }
+        return new javafx.scene.image.Image(file.toURI().toString());
     }
 }

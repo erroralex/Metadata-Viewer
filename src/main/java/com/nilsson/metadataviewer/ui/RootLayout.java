@@ -9,13 +9,15 @@ import javafx.scene.Node;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 
+import java.io.File;
+
 public class RootLayout extends BorderPane {
     private SideNavigation sideNav;
 
     // Persistent Views
     private final ExtractorView extractorView;
     private final ScrubView scrubView;
-    private final SpeedSorterView speedSorterView; // New Persistent View
+    private final SpeedSorterView speedSorterView;
 
     public RootLayout(Stage stage, CustomTitleBar titleBar) {
         this.getStyleClass().add("root-layout");
@@ -23,7 +25,7 @@ public class RootLayout extends BorderPane {
         // Initialize views ONCE
         this.extractorView = new ExtractorView();
         this.scrubView = new ScrubView();
-        this.speedSorterView = new SpeedSorterView(); // Init
+        this.speedSorterView = new SpeedSorterView();
 
         this.sideNav = new SideNavigation(this);
         this.sideNav.setPrefWidth(260);
@@ -37,6 +39,16 @@ public class RootLayout extends BorderPane {
         this.setCenter(view);
     }
 
+    // Handle file drop on EXE launch
+    public void openInitialFile(File file) {
+        // Ensure we are on the extractor view
+        setContent(this.extractorView);
+        sideNav.highlightExtractor();
+
+        // Trigger processing
+        this.extractorView.process(file);
+    }
+
     public void navigateToExtractor(FavoriteData favorite) {
         if (favorite != null) {
             this.extractorView.populateFromFavorite(favorite);
@@ -46,7 +58,6 @@ public class RootLayout extends BorderPane {
     }
 
     public void navigateToFavorites(FavoriteData data) {
-        // Favorites view is usually refreshed on load, so we create new or reuse
         setContent(new FavoritesView(this));
         sideNav.highlightFavorites();
     }
@@ -56,11 +67,9 @@ public class RootLayout extends BorderPane {
         sideNav.highlightScrub();
     }
 
-    // New Navigation Method
     public void navigateToSpeedSorter() {
         setContent(this.speedSorterView);
         sideNav.highlightSort();
-        // Request focus so keyboard shortcuts work immediately
         this.speedSorterView.requestFocus();
     }
 }

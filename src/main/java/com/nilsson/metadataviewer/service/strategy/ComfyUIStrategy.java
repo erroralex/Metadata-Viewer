@@ -1,157 +1,492 @@
 package com.nilsson.metadataviewer.service.strategy;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import java.util.Iterator;
-import java.util.Map;
+import java.util.*;
 import java.text.DecimalFormat;
 
 public class ComfyUIStrategy implements MetadataStrategy {
 
     private static final DecimalFormat DF = new DecimalFormat("#.##");
 
+    private static final Set<String> VALID_EXTENSIONS = new HashSet<>(Arrays.asList(
+            ".safetensors", ".ckpt", ".gguf", ".pt", ".pth", ".bin"
+    ));
+
+    private static final Set<String> IGNORED_FILENAME_PATTERNS = new HashSet<>(Arrays.asList(
+            "upscale", "esrgan", "controlnet", "ipadapter", "faceid", "adapter",
+            "clip", "vae", "preview", "t5", "encoder", "refiner", "fp16", "fp8",
+            "bbox", "yolo", "ultralytics", "mediapipe", "segs", "detailer", "mask", "inpaint"
+    ));
+
+    private static final Set<String> ALLOWED_MODEL_NODE_TYPES = new HashSet<>(Arrays.asList(
+            "checkpoint", "unet", "loader", "lora"
+    ));
+
+    private static final Set<String> IGNORED_MODEL_NODE_TYPES = new HashSet<>(Arrays.asList(
+            "preprocessor", "detailer", "output", "save", "preview", "image", "detector", "mask"
+    ));
+
+    private static final Set<String> SAMPLER_KEYWORDS = new HashSet<>(Arrays.asList(
+            "euler", "heun", "dpm", "lms", "ddim", "uni_pc", "lcm", "multistep", "singlestep"
+    ));
+
+    private static final Set<String> SCHEDULER_KEYWORDS = new HashSet<>(Arrays.asList(
+            "normal", "karras", "exponential", "sgm", "simple", "beta", "ddim", "standard", "linear", "uniform", "gpu", "polyexponential", "automatic"
+    ));
+
     @Override
     public void extract(String key, JsonNode value, JsonNode parentNode, Map<String, String> results) {
+        try {
+            if (key.equalsIgnoreCase("nodes") && value.isArray()) {
+                processNodes(value, parentNode.get("links"), results);
+            } else if (key.equalsIgnoreCase("inputs") && value.isObject()) {
+                processInputsBlock(value, parentNode, results);
+            } else if (key.equalsIgnoreCase("extra") && value.has("seed_widgets") && !results.containsKey("_seed_locked")) {
+                processGlobalSeedMap(value.get("seed_widgets"), parentNode.get("nodes"), results);
+            }
+        } catch (Exception e) {}
+    }
 
-        // 1. INPUTS BLOCK
-        if (key.equalsIgnoreCase("inputs") && value.isObject()) {
-            processInputsBlock(value, parentNode, results);
-            return;
+    private void processNodes(JsonNode nodes, JsonNode links, Map<String, String> results) {
+        Map<Integer, Integer> linkMap = buildLinkMap(links);
+        Map<Integer, JsonNode> nodeMap = buildNodeMap(nodes);
+
+        JsonNode bestSampler = null;
+        long maxSteps = -1;
+        double fluxGuidance = -1;
+        boolean userSeedFound = false;
+
+        for (JsonNode node : nodes) {
+            String type = getNodeType(node).toLowerCase();
+            String title = getNodeTitle(node).toLowerCase();
+            JsonNode widgets = node.get("widgets_values");
+
+            // 1. SEED (User Intent)
+            if (type.contains("primitive") && (title.contains("seed") || title.contains("noise"))) {
+                long val = extractFirstNumeric(widgets);
+                if (val > -1) {
+                    results.put("Seed", String.valueOf(val));
+                    results.put("_seed_locked", "true");
+                    userSeedFound = true;
+                }
+            }
+
+            // 2. MAIN SAMPLER
+            if (type.contains("sampler") && !type.contains("detailer") && !type.contains("upscale")) {
+                long steps = resolveNumericParam(node, "steps", nodeMap, linkMap);
+                if (steps == -1) steps = extractStepsFromWidgets(widgets);
+
+                if (steps > maxSteps) {
+                    maxSteps = steps;
+                    bestSampler = node;
+                }
+            }
+
+            // 3. FLUX GUIDANCE Detection (BasicGuider or FluxGuidance)
+            if (title.contains("guidance") || type.contains("guider")) {
+                double g = resolveFloatParam(node, "guidance", nodeMap, linkMap);
+                if (g > -1) fluxGuidance = g;
+            }
+
+            // 4. MODELS
+            if (isAllowedModelNode(type)) {
+                if (type.contains("loraloader")) extractLoras(widgets, results);
+                else extractModelFromList(widgets, results);
+            }
+
+            // 5. PROMPTS
+            if (isTextOrPrimitiveNode(node) && widgets != null) {
+                if (title.contains("negative")) extractPromptText(node, widgets, results, "Negative");
+                else if (title.contains("positive")) extractPromptText(node, widgets, results, "Prompt");
+                else extractPrompt(node, widgets, results);
+            }
         }
 
-        // 2. Standard Metadata
-        if (!value.isTextual()) return;
-        String text = value.asText();
+        // EXTRACT FROM MAIN SAMPLER
+        if (bestSampler != null) {
+            if (maxSteps > -1) results.put("Steps", String.valueOf(maxSteps));
 
-        if (isComfyModelKey(key) && text.length() > 4 && !text.contains("{")) {
-            updateModelField(results, text);
-        } else if (key.startsWith("clip_name")) {
-            updateModelField(results, "CLIP: " + text.replace(".safetensors", ""));
-        } else if ((key.equals("vae_name") || key.equals("vae"))) {
-            results.put("VAE", text);
-        } else if (key.equals("sampler_name")) {
-            String scheduler = parentNode.has("scheduler") ? parentNode.get("scheduler").asText() : "";
-            results.put("Sampler", scheduler.isEmpty() ? text : text + " (" + scheduler + ")");
-        } else if (key.equals("lora_name") || key.equals("lora")) {
-            processLora(text, parentNode, results);
+            if (!userSeedFound) {
+                long s = resolveNumericParam(bestSampler, "seed", nodeMap, linkMap);
+                if (s == -1) s = resolveNumericParam(bestSampler, "noise_seed", nodeMap, linkMap);
+                if (s == -1) s = extractSeedFromWidgets(bestSampler.get("widgets_values"));
+                if (s > -1 && !results.containsKey("Seed")) results.put("Seed", String.valueOf(s));
+            }
+
+            // --- CFG Logic (Normal + Flux Distilled) ---
+            double cfg = resolveFloatParam(bestSampler, "cfg", nodeMap, linkMap);
+            if (cfg == -1) cfg = extractCfgFromWidgets(bestSampler.get("widgets_values"));
+
+            if (cfg > -1) {
+                String cfgStr = DF.format(cfg);
+                if (fluxGuidance > -1) {
+                    cfgStr += " (distilled " + DF.format(fluxGuidance) + ")";
+                }
+                results.put("CFG", cfgStr);
+            }
+
+            // --- Sampler Logic (Sampler + Scheduler) ---
+            String samp = resolveStringParam(bestSampler, "sampler", nodeMap, linkMap);
+            if (samp == null) samp = extractKeyword(bestSampler.get("widgets_values"), SAMPLER_KEYWORDS);
+
+            String sched = resolveStringParam(bestSampler, "scheduler", nodeMap, linkMap);
+            if (sched == null) sched = extractKeyword(bestSampler.get("widgets_values"), SCHEDULER_KEYWORDS);
+
+            if (samp != null) {
+                if (sched != null) {
+                    results.put("Sampler", samp + " (" + sched + ")");
+                } else {
+                    results.put("Sampler", samp);
+                }
+            } else if (sched != null) {
+                // Fallback if only scheduler is found
+                results.put("Sampler", sched);
+            }
+        }
+    }
+
+    // --- HELPERS ---
+    private boolean isAllowedModelNode(String type) {
+        if (IGNORED_MODEL_NODE_TYPES.stream().anyMatch(type::contains)) return false;
+        return ALLOWED_MODEL_NODE_TYPES.stream().anyMatch(type::contains);
+    }
+
+    private void processGlobalSeedMap(JsonNode seedWidgets, JsonNode nodes, Map<String, String> results) {
+        Iterator<Map.Entry<String, JsonNode>> fields = seedWidgets.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            String targetNodeId = entry.getKey();
+            int widgetIndex = entry.getValue().asInt();
+            for (JsonNode node : nodes) {
+                if (String.valueOf(node.get("id").asInt()).equals(targetNodeId)) {
+                    JsonNode widgets = node.get("widgets_values");
+                    if (widgets != null && widgets.size() > widgetIndex) {
+                        JsonNode val = widgets.get(widgetIndex);
+                        if (isNumeric(val)) results.put("Seed", val.asText());
+                    }
+                }
+            }
         }
     }
 
     private void processInputsBlock(JsonNode inputs, JsonNode node, Map<String, String> results) {
+        String type = getNodeType(node).toLowerCase();
+        String title = getNodeTitle(node).toLowerCase();
         Iterator<Map.Entry<String, JsonNode>> fields = inputs.fields();
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> field = fields.next();
-            String k = field.getKey();
-            String kLower = k.toLowerCase().trim();
+            String k = field.getKey().toLowerCase();
             JsonNode v = field.getValue();
 
-            // --- NUMERIC FIELDS ---
-            if (v.isNumber() || v.isIntegralNumber()) {
-                String val = v.asText();
-                double numVal = v.asDouble();
+            if (k.equals("scheduler")) results.put("Scheduler", v.asText());
+            if (k.equals("sampler_name")) results.put("Sampler", v.asText());
 
-                // FIX: Ignore 0 or negative values (prevent overwriting real data with "0" from resize nodes)
-                if (numVal <= 0) continue;
-
-                if (kLower.equals("steps")) results.put("Steps", val);
-                else if (kLower.equals("cfg") || kLower.equals("cfg_scale")) results.put("CFG", val);
-                else if (kLower.contains("seed")) results.put("Seed", val);
-                else if (kLower.equals("width")) results.put("Width", val);
-                else if (kLower.equals("height")) results.put("Height", val);
-                continue;
-            }
-
-            // --- TEXT FIELDS ---
-            if (v.isTextual()) {
-                String text = v.asText().trim();
-                if (text.isEmpty()) continue;
-
-                boolean shouldExtract = false;
-
-                // Rule A: Explicit "prompt" key
-                if (kLower.equals("prompt") || kLower.equals("captions")) {
-                    shouldExtract = true;
+            if (isNumeric(v)) {
+                if (k.equals("steps")) results.put("Steps", v.asText());
+                if (k.equals("cfg") || k.equals("cfg_scale")) results.put("CFG", v.asText());
+                if ((k.equals("seed") || k.equals("noise_seed")) && !results.containsKey("_seed_locked")) results.put("Seed", v.asText());
+            } else if (v.isTextual()) {
+                String txt = v.asText();
+                if (isAllowedModelNode(type) && isValidModelFile(txt) && (k.contains("ckpt") || k.contains("model") || k.contains("unet") || k.contains("file"))) {
+                    results.put("Model", cleanFilename(txt));
                 }
-                // Rule B: Generic keys if node is Text/Prompt
-                else if ((kLower.equals("text") || kLower.equals("text_g") || kLower.equals("text_l") || kLower.equals("string") || kLower.equals("value"))
-                        && isTextOrPrimitiveNode(node)) {
-                    shouldExtract = true;
-                }
-
-                if (shouldExtract) {
-                    String target = isNegativeNode(node, inputs) ? "Negative" : "Prompt";
-                    appendResult(results, target, text);
+                if (isValidPrompt(txt) && (k.contains("prompt") || k.contains("text"))) {
+                    String targetKey = (title.contains("negative") || isNegativeNode(node)) ? "Negative" : "Prompt";
+                    appendResult(results, targetKey, txt);
                 }
             }
         }
     }
 
+    private long extractFirstNumeric(JsonNode widgets) {
+        if (widgets == null) return -1;
+        for (JsonNode w : widgets) if (isNumeric(w)) return asLongSafe(w);
+        return -1;
+    }
+
+    private Map<Integer, Integer> buildLinkMap(JsonNode links) {
+        Map<Integer, Integer> map = new HashMap<>();
+        if (links != null) for (JsonNode link : links) if (link.size() >= 2) map.put(link.get(0).asInt(), link.get(1).asInt());
+        return map;
+    }
+
+    private Map<Integer, JsonNode> buildNodeMap(JsonNode nodes) {
+        Map<Integer, JsonNode> map = new HashMap<>();
+        for (JsonNode node : nodes) map.put(node.get("id").asInt(), node);
+        return map;
+    }
+
+    private boolean isNumeric(JsonNode node) {
+        if (node == null || node.isBoolean()) return false;
+        return node.isNumber() || (node.isTextual() && node.asText().matches("-?\\d+(\\.\\d+)?"));
+    }
+
+    private boolean isInteger(JsonNode node) {
+        if (!isNumeric(node)) return false;
+        String t = node.asText();
+        return !t.contains(".") || t.endsWith(".0");
+    }
+
+    private long asLongSafe(JsonNode node) {
+        try {
+            if (node.isNumber()) return node.asLong();
+            return Long.parseLong(node.asText().split("\\.")[0]);
+        } catch (Exception e) { return -1; }
+    }
+
+    private boolean isValidModelFile(String filename) {
+        if (filename == null || filename.length() < 3) return false;
+        String lower = filename.toLowerCase();
+        if (VALID_EXTENSIONS.stream().noneMatch(lower::endsWith)) return false;
+        if (IGNORED_FILENAME_PATTERNS.stream().anyMatch(lower::contains)) return false;
+        if (lower.equals("true") || lower.equals("false") || lower.equals("none")) return false;
+        return true;
+    }
+
+    private String cleanFilename(String path) {
+        if (path.contains("\\")) path = path.substring(path.lastIndexOf("\\") + 1);
+        if (path.contains("/")) path = path.substring(path.lastIndexOf("/") + 1);
+        return path.replaceAll("\\.(safetensors|gguf|ckpt|pt|pth|bin)$", "");
+    }
+
+    private boolean isValidPrompt(String text) {
+        if (text.length() < 5) return false;
+        if (isValidModelFile(text)) return false;
+        if (text.startsWith("comma") || text.startsWith("newline")) return false;
+        if (text.equalsIgnoreCase("true") || text.equalsIgnoreCase("false")) return false;
+        return true;
+    }
+
+    private String getNodeType(JsonNode node) {
+        if (node.has("class_type")) return node.get("class_type").asText().toLowerCase();
+        if (node.has("type")) return node.get("type").asText().toLowerCase();
+        return "";
+    }
+
+    private String getNodeTitle(JsonNode node) {
+        if (node.has("title")) return node.get("title").asText().toLowerCase();
+        if (node.has("_meta") && node.get("_meta").has("title")) return node.get("_meta").get("title").asText().toLowerCase();
+        return "";
+    }
+
     private boolean isTextOrPrimitiveNode(JsonNode node) {
-        if (node.has("class_type")) {
-            String type = node.get("class_type").asText().toLowerCase();
-            return type.contains("text") || type.contains("prompt") || type.contains("qwen") || type.contains("primitive");
-        }
-        if (node.has("_meta") && node.get("_meta").has("title")) {
-            String title = node.get("_meta").get("title").asText().toLowerCase();
-            return title.contains("text") || title.contains("prompt") || title.contains("qwen");
-        }
-        return false;
+        String type = getNodeType(node);
+        return type.contains("text") || type.contains("prompt") || type.contains("primitive") || type.contains("string");
+    }
+
+    private boolean isNegativeNode(JsonNode node) {
+        String title = getNodeTitle(node).toLowerCase();
+        if (title.contains("negative")) return true;
+        String type = getNodeType(node);
+        return type.contains("negative") || type.contains("neg ");
     }
 
     private void appendResult(Map<String, String> results, String key, String newText) {
         String existing = results.get(key);
-        if (existing == null || existing.isEmpty()) {
-            results.put(key, newText);
-        } else if (!existing.contains(newText)) {
-            String sep = (existing.length() > 50 || newText.length() > 50) ? "\n\n" : ", ";
-            results.put(key, existing + sep + newText);
+        if (existing == null || existing.isEmpty()) results.put(key, newText);
+        else if (!existing.contains(newText)) results.put(key, existing + ", " + newText);
+    }
+
+    private long resolveNumericParam(JsonNode node, String paramName, Map<Integer, JsonNode> nodeMap, Map<Integer, Integer> linkMap) {
+        if (!node.has("inputs")) return -1;
+        for (JsonNode input : node.get("inputs")) {
+            String name = input.get("name").asText().toLowerCase();
+            if (name.contains(paramName)) {
+                if (input.has("link") && input.get("link").isInt()) {
+                    int linkId = input.get("link").asInt();
+                    if (linkMap.containsKey(linkId)) {
+                        int sourceId = linkMap.get(linkId);
+                        JsonNode source = nodeMap.get(sourceId);
+                        if (source != null) {
+                            long val = extractFirstNumeric(source.get("widgets_values"));
+                            if (val == -1 && source.has("inputs")) {
+                                // Simple single-level recursion fallback
+                            }
+                            return val;
+                        }
+                    }
+                }
+                if (input.has("widget") && input.get("widget").has("value")) {
+                    JsonNode val = input.get("widget").get("value");
+                    if (isNumeric(val)) return val.asLong();
+                }
+            }
+        }
+        return -1;
+    }
+
+    private double resolveFloatParam(JsonNode node, String paramName, Map<Integer, JsonNode> nodeMap, Map<Integer, Integer> linkMap) {
+        // Try to get link value first
+        if (node.has("inputs")) {
+            for (JsonNode input : node.get("inputs")) {
+                String name = input.get("name").asText().toLowerCase();
+                if (name.contains(paramName)) {
+                    if (input.has("link") && input.get("link").isInt()) {
+                        int linkId = input.get("link").asInt();
+                        if (linkMap.containsKey(linkId)) {
+                            int sourceId = linkMap.get(linkId);
+                            JsonNode source = nodeMap.get(sourceId);
+                            if (source != null && source.has("widgets_values")) {
+                                JsonNode widgets = source.get("widgets_values");
+                                if (widgets != null) {
+                                    for (JsonNode w : widgets) {
+                                        if (isNumeric(w)) return w.asDouble();
+                                    }
+                                }
+                            }
+                            // Also check inputs of source (e.g., if source is a param node)
+                            if (source != null && source.has("inputs") && source.get("inputs").has(paramName)) {
+                                JsonNode v = source.get("inputs").get(paramName);
+                                if (isNumeric(v)) return v.asDouble();
+                            }
+                        }
+                    }
+                    if (input.has("widget") && input.get("widget").has("value")) {
+                        JsonNode val = input.get("widget").get("value");
+                        if (isNumeric(val)) return val.asDouble();
+                    }
+                }
+            }
+        }
+
+        // Fallback: Check widgets inside the node itself
+        if (node.has("widgets_values")) {
+            for (JsonNode w : node.get("widgets_values")) {
+                if (isNumeric(w) && !w.isBoolean()) {
+                    if (paramName.equals("guidance")) return w.asDouble();
+                    if (paramName.contains("cfg") && !w.isIntegralNumber()) return w.asDouble();
+                }
+            }
+        }
+        return -1;
+    }
+
+    private String resolveStringParam(JsonNode node, String paramName, Map<Integer, JsonNode> nodeMap, Map<Integer, Integer> linkMap) {
+        if (!node.has("inputs")) return null;
+        for (JsonNode input : node.get("inputs")) {
+            String name = input.get("name").asText().toLowerCase();
+            if (name.contains(paramName)) {
+                if (input.has("widget") && input.get("widget").has("value")) {
+                    return input.get("widget").get("value").asText();
+                }
+                if (input.has("link") && input.get("link").isInt()) {
+                    int linkId = input.get("link").asInt();
+                    if (linkMap.containsKey(linkId)) {
+                        int sourceId = linkMap.get(linkId);
+                        JsonNode source = nodeMap.get(sourceId);
+                        if (source != null) {
+                            // 1. Try Widgets (Standard)
+                            if (source.has("widgets_values")) {
+                                JsonNode w = source.get("widgets_values").get(0);
+                                if (w != null && w.isTextual()) return w.asText();
+                            }
+                            // 2. Try Inputs (KSamplerSelect often stores name in 'inputs' not widgets)
+                            if (source.has("inputs")) {
+                                if (source.get("inputs").has("sampler_name")) {
+                                    return source.get("inputs").get("sampler_name").asText();
+                                }
+                                if (source.get("inputs").has("scheduler")) {
+                                    return source.get("inputs").get("scheduler").asText();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private void extractModelFromList(JsonNode widgets, Map<String, String> results) {
+        if (widgets == null) return;
+        for (JsonNode w : widgets) {
+            if (w.isTextual()) {
+                String txt = w.asText();
+                if (isValidModelFile(txt)) results.put("Model", cleanFilename(txt));
+            }
         }
     }
 
-    private boolean isNegativeNode(JsonNode node, JsonNode inputs) {
-        if (node.has("_meta") && node.get("_meta").has("title")) {
-            String title = node.get("_meta").get("title").asText().toLowerCase();
-            if (title.contains("negative") || title.contains("neg ") || title.contains("(neg)")) return true;
+    private void extractLoras(JsonNode widgets, Map<String, String> results) {
+        if (widgets == null) return;
+        String name = null;
+        double strength = 1.0;
+        for (JsonNode w : widgets) {
+            if (w.isTextual() && isValidModelFile(w.asText())) name = cleanFilename(w.asText());
+            else if (isNumeric(w)) strength = w.asDouble();
         }
-        if (node.has("class_type")) {
-            String type = node.get("class_type").asText().toLowerCase();
-            if (type.contains("negative")) return true;
+        if (name != null) {
+            String entry = name + (strength != 1.0 ? " (" + DF.format(strength) + ")" : "");
+            String existing = results.getOrDefault("Loras", "");
+            if (!existing.contains(name)) results.put("Loras", existing.isEmpty() ? entry : existing + ", " + entry);
         }
-        return inputs.has("negative") || inputs.has("neg");
     }
 
-    // --- Helpers ---
-    private void processLora(String text, JsonNode parentNode, Map<String, String> results) {
-        if (parentNode.has("on") && !parentNode.get("on").asBoolean()) return;
-
-        double strModel = 1.0;
-        double strClip = 1.0;
-        boolean foundStrength = false;
-
-        if (parentNode.has("strength_model")) { strModel = parentNode.get("strength_model").asDouble(); foundStrength = true; }
-        if (parentNode.has("strength_clip")) { strClip = parentNode.get("strength_clip").asDouble(); foundStrength = true; }
-        if (!foundStrength && parentNode.has("strength")) { strModel = parentNode.get("strength").asDouble(); strClip = strModel; }
-
-        String cleanName = text.replace(".safetensors", "").replace(".pt", "");
-        String finalEntry = cleanName;
-
-        if (strModel != 1.0 || strClip != 1.0) {
-            if (strModel == strClip) finalEntry += " (" + DF.format(strModel) + ")";
-            else finalEntry += " (M:" + DF.format(strModel) + ", C:" + DF.format(strClip) + ")";
+    private long extractStepsFromWidgets(JsonNode widgets) {
+        if (widgets == null) return -1;
+        for (JsonNode w : widgets) {
+            if (w.isBoolean()) continue;
+            if (isInteger(w)) {
+                long val = w.asLong();
+                if (val > 1 && val <= 1000) return val;
+            }
         }
-
-        String existing = results.getOrDefault("Loras", "");
-        if (existing.isEmpty() || existing.equals("None")) results.put("Loras", finalEntry);
-        else if (!existing.contains(finalEntry)) results.put("Loras", existing + ", " + finalEntry);
+        return -1;
     }
 
-    private void updateModelField(Map<String, String> results, String newVal) {
-        String existing = results.getOrDefault("Model", "");
-        if (existing.isEmpty()) results.put("Model", newVal);
-        else if (!existing.contains(newVal)) results.put("Model", existing + " + " + newVal);
+    private long extractSeedFromWidgets(JsonNode widgets) {
+        if (widgets == null) return -1;
+        for (JsonNode w : widgets) {
+            if (isNumeric(w)) {
+                long val = w.asLong();
+                if (val > 1000000) return val;
+            }
+        }
+        return -1;
     }
 
-    private boolean isComfyModelKey(String key) {
-        String k = key.toLowerCase();
-        return k.equals("ckpt_name") || k.equals("unet_name") || k.equals("model_name") || k.contains("checkpoint");
+    private double extractCfgFromWidgets(JsonNode widgets) {
+        if (widgets == null) return -1;
+        for (JsonNode w : widgets) {
+            if (isNumeric(w)) {
+                double val = w.asDouble();
+                if (val > 0 && val <= 50.0) return val;
+            }
+        }
+        return -1;
+    }
+
+    private String extractKeyword(JsonNode widgets, Set<String> keywords) {
+        if (widgets == null) return null;
+        for (JsonNode w : widgets) {
+            if (w.isTextual()) {
+                String txt = w.asText().toLowerCase();
+                if (keywords.stream().anyMatch(txt::contains)) return w.asText();
+            }
+        }
+        return null;
+    }
+
+    private void extractPromptText(JsonNode node, JsonNode widgets, Map<String, String> results, String targetKey) {
+        if (widgets == null) return;
+        for (JsonNode w : widgets) {
+            if (w.isTextual()) {
+                String txt = w.asText().trim();
+                if (isValidPrompt(txt)) appendResult(results, targetKey, txt);
+            }
+        }
+    }
+
+    private void extractPrompt(JsonNode node, JsonNode widgets, Map<String, String> results) {
+        if (widgets == null) return;
+        for (JsonNode w : widgets) {
+            if (w.isTextual()) {
+                String txt = w.asText().trim();
+                if (isValidPrompt(txt)) {
+                    String target = isNegativeNode(node) ? "Negative" : "Prompt";
+                    appendResult(results, target, txt);
+                }
+            }
+        }
     }
 }

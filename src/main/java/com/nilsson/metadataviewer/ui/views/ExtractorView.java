@@ -34,7 +34,6 @@ public class ExtractorView extends ScrollPane {
     private final TextArea promptText = new TextArea();
     private final TextArea negativePromptText = new TextArea();
 
-    // Selectable TextFields
     private final TextField modelVal = createSelectableField("-");
     private final TextField softwareVal = createSelectableField("-");
     private final TextField samplerVal = createSelectableField("-");
@@ -89,7 +88,6 @@ public class ExtractorView extends ScrollPane {
         // --- Stats Grid ---
         VBox statsWrapper = new VBox(12);
 
-        // ROW 1: Model (Expands) + Software
         VBox modelCard = createStatCard("Model", modelVal, FontAwesome.CUBE);
         VBox softwareCard = createStatCard("Software", softwareVal, FontAwesome.TERMINAL);
 
@@ -99,7 +97,6 @@ public class ExtractorView extends ScrollPane {
 
         HBox row1 = new HBox(12, modelCard, softwareCard);
 
-        // ROW 2: Optimized Layout
         VBox stepsCard = createStatCard("Steps", stepsVal, FontAwesome.TASKS);
         VBox cfgCard = createStatCard("CFG", cfgVal, FontAwesome.ADJUST);
         VBox seedCard = createStatCard("Seed", seedVal, FontAwesome.KEY);
@@ -108,7 +105,7 @@ public class ExtractorView extends ScrollPane {
 
         stepsCard.setPrefWidth(90);
         cfgCard.setPrefWidth(90);
-        HBox.setHgrow(seedCard, Priority.ALWAYS); // Seed Expands
+        HBox.setHgrow(seedCard, Priority.ALWAYS);
         samplerCard.setPrefWidth(140);
         sizeCard.setPrefWidth(140);
 
@@ -127,6 +124,14 @@ public class ExtractorView extends ScrollPane {
         lastData.put("Raw", fav.getRaw());
         lastData.put("Prompt", fav.getPrompt());
         lastData.put("Negative", fav.getNegative());
+        lastData.put("Model", fav.getModel());
+        lastData.put("Software", fav.getSoftware());
+        lastData.put("Sampler", fav.getSampler());
+        lastData.put("Steps", fav.getSteps());
+        lastData.put("CFG", fav.getCfg());
+        lastData.put("Seed", fav.getSeed());
+        lastData.put("Size", fav.getSize());
+        lastData.put("Loras", fav.getLoras());
 
         promptText.setText(fav.getPrompt());
         negativePromptText.setText(fav.getNegative());
@@ -142,9 +147,9 @@ public class ExtractorView extends ScrollPane {
         if (fav.getThumbnailPath() != null) {
             File thumbFile = new File(fav.getThumbnailPath());
             this.lastFile = thumbFile.exists() ? thumbFile : null;
-            try {
-                previewImageView.setImage(new Image("file:" + fav.getThumbnailPath()));
-            } catch (Exception e) { /* ignore */ }
+            if (this.lastFile != null) {
+                loadImageSafe(this.lastFile);
+            }
         }
     }
 
@@ -173,9 +178,11 @@ public class ExtractorView extends ScrollPane {
         stage.initModality(Modality.APPLICATION_MODAL);
         stage.initStyle(StageStyle.TRANSPARENT);
 
-        ImageView fullView = new ImageView(new Image(file.toURI().toString()));
+        ImageView fullView = new ImageView();
         fullView.setPreserveRatio(true);
         fullView.setSmooth(true);
+
+        loadImageIntoView(file, fullView, false);
 
         fullView.fitWidthProperty().bind(stage.widthProperty());
         fullView.fitHeightProperty().bind(stage.heightProperty());
@@ -195,6 +202,20 @@ public class ExtractorView extends ScrollPane {
         stage.setFullScreen(true);
         stage.setFullScreenExitHint("");
         stage.show();
+    }
+
+    private void loadImageSafe(File f) {
+        loadImageIntoView(f, previewImageView, true);
+    }
+
+    private void loadImageIntoView(File f, ImageView view, boolean small) {
+        try {
+            Image img = MetadataService.loadFxImage(f);
+            view.setImage(img);
+        } catch (Exception e) {
+            e.printStackTrace();
+            view.setImage(null);
+        }
     }
 
     private Button createSaveButton() {
@@ -360,7 +381,6 @@ public class ExtractorView extends ScrollPane {
         TextField field = new TextField(text);
         field.setEditable(false);
         field.getStyleClass().add("selectable-stat-field");
-        // Ensure transparency so card background shows
         field.setStyle("-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0;");
         return field;
     }
@@ -415,12 +435,7 @@ public class ExtractorView extends ScrollPane {
             }
             sizeVal.setText(sizeText != null ? sizeText : "N/A");
 
-            try {
-                Image img = new Image(f.toURI().toString(), 140, 140, true, true, true);
-                previewImageView.setImage(img);
-            } catch (Exception ex) {
-                previewImageView.setImage(null);
-            }
+            loadImageSafe(f);
 
             this.getScene().setCursor(javafx.scene.Cursor.DEFAULT);
         });
@@ -431,6 +446,8 @@ public class ExtractorView extends ScrollPane {
             modelVal.setText("Error");
             this.getScene().setCursor(javafx.scene.Cursor.DEFAULT);
             ex.printStackTrace();
+
+            loadImageSafe(f);
         });
 
         new Thread(extractionTask).start();
