@@ -38,15 +38,113 @@ public class ComfyUIStrategy implements MetadataStrategy {
     public void extract(String key, JsonNode value, JsonNode parentNode, Map<String, String> results) {
         try {
             if (key.equalsIgnoreCase("nodes") && value.isArray()) {
+                // UI Format processing
                 processNodes(value, parentNode.get("links"), results);
-            } else if (key.equalsIgnoreCase("inputs") && value.isObject()) {
+            }
+            else if (key.equals("api_nodes") && value.isObject()) {
+                // API Format processing
+                processApiWorkflow(value, results);
+            }
+            // Fallback for simple inputs
+            else if (key.equalsIgnoreCase("inputs") && value.isObject()) {
                 processInputsBlock(value, parentNode, results);
-            } else if (key.equalsIgnoreCase("extra") && value.has("seed_widgets") && !results.containsKey("_seed_locked")) {
+            }
+            else if (key.equalsIgnoreCase("extra") && value.has("seed_widgets") && !results.containsKey("_seed_locked")) {
                 processGlobalSeedMap(value.get("seed_widgets"), parentNode.get("nodes"), results);
             }
         } catch (Exception e) {}
     }
 
+    // --- API FORMAT HANDLING (NEW) ---
+    private void processApiWorkflow(JsonNode root, Map<String, String> results) {
+        JsonNode bestSampler = null;
+        long maxSteps = -1;
+        double fluxGuidance = -1;
+
+        Iterator<Map.Entry<String, JsonNode>> fields = root.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            JsonNode node = entry.getValue();
+
+            // 1. Extract globals from every node
+            if (node.has("inputs")) {
+                processInputsBlock(node.get("inputs"), node, results);
+
+                // Flux Guidance Scan
+                double g = resolveFloatParamRecursive(node, "guidance", root);
+                if (g > -1) fluxGuidance = g;
+            }
+
+            // 2. Find Best Sampler
+            String type = getNodeType(node).toLowerCase();
+            long steps = -1;
+
+            if (type.contains("samplercustom")) {
+                // Check sigmas link for scheduler which might have steps
+                JsonNode sigmasNode = getLinkedNodeApi(node, "sigmas", root);
+                if (sigmasNode != null) steps = resolveNumericParamRecursive(sigmasNode, "steps", root);
+            } else if (type.contains("sampler") && !type.contains("detailer") && !type.contains("upscale")) {
+                steps = resolveNumericParamRecursive(node, "steps", root);
+            }
+
+            if (steps > maxSteps) {
+                maxSteps = steps;
+                bestSampler = node;
+            }
+        }
+
+        if (bestSampler != null) {
+            results.put("Steps", String.valueOf(maxSteps));
+
+            long s = resolveNumericParamRecursive(bestSampler, "seed", root);
+            if (s == -1) s = resolveNumericParamRecursive(bestSampler, "noise_seed", root);
+            // Handle SamplerCustomAdvanced seed path: Sampler -> Noise -> noise_seed
+            if (s == -1) {
+                JsonNode noiseNode = getLinkedNodeApi(bestSampler, "noise", root);
+                if (noiseNode != null) s = resolveNumericParamRecursive(noiseNode, "noise_seed", root);
+            }
+            if (s > -1 && !results.containsKey("Seed")) results.put("Seed", String.valueOf(s));
+
+            double cfg = resolveFloatParamRecursive(bestSampler, "cfg", root);
+            if (cfg == -1) {
+                // Handle SamplerCustomAdvanced cfg path: Sampler -> Guider -> cfg
+                JsonNode guiderNode = getLinkedNodeApi(bestSampler, "guider", root);
+                if (guiderNode != null) cfg = resolveFloatParamRecursive(guiderNode, "cfg", root);
+            }
+
+            if (cfg > -1) {
+                String cfgStr = DF.format(cfg);
+                if (fluxGuidance > -1) {
+                    cfgStr += " (distilled " + DF.format(fluxGuidance) + ")";
+                }
+                results.put("CFG", cfgStr);
+            }
+
+            String samp = resolveStringParamRecursive(bestSampler, "sampler_name", root);
+            if (samp == null) {
+                JsonNode sampNode = getLinkedNodeApi(bestSampler, "sampler", root);
+                if (sampNode != null) samp = resolveStringParamRecursive(sampNode, "sampler_name", root);
+            }
+
+            String sched = resolveStringParamRecursive(bestSampler, "scheduler", root);
+            if (sched == null) {
+                JsonNode sigNode = getLinkedNodeApi(bestSampler, "sigmas", root);
+                if (sigNode != null) sched = resolveStringParamRecursive(sigNode, "scheduler", root);
+            }
+
+            if (samp != null) {
+                if (sched != null) {
+                    results.put("Sampler", samp + " (" + sched + ")");
+                } else {
+                    results.put("Sampler", samp);
+                }
+            } else if (sched != null) {
+                results.put("Sampler", sched);
+            }
+        }
+    }
+
+    // --- STANDARD UI FORMAT HANDLING ---
     private void processNodes(JsonNode nodes, JsonNode links, Map<String, String> results) {
         Map<Integer, Integer> linkMap = buildLinkMap(links);
         Map<Integer, JsonNode> nodeMap = buildNodeMap(nodes);
@@ -61,7 +159,7 @@ public class ComfyUIStrategy implements MetadataStrategy {
             String title = getNodeTitle(node).toLowerCase();
             JsonNode widgets = node.get("widgets_values");
 
-            // 1. SEED (User Intent)
+            // 1. SEED
             if (type.contains("primitive") && (title.contains("seed") || title.contains("noise"))) {
                 long val = extractFirstNumeric(widgets);
                 if (val > -1) {
@@ -82,7 +180,7 @@ public class ComfyUIStrategy implements MetadataStrategy {
                 }
             }
 
-            // 3. FLUX GUIDANCE Detection (BasicGuider or FluxGuidance)
+            // 3. FLUX GUIDANCE
             if (title.contains("guidance") || type.contains("guider")) {
                 double g = resolveFloatParam(node, "guidance", nodeMap, linkMap);
                 if (g > -1) fluxGuidance = g;
@@ -113,8 +211,15 @@ public class ComfyUIStrategy implements MetadataStrategy {
                 if (s > -1 && !results.containsKey("Seed")) results.put("Seed", String.valueOf(s));
             }
 
-            // --- CFG Logic (Normal + Flux Distilled) ---
+            // --- CFG Logic ---
             double cfg = resolveFloatParam(bestSampler, "cfg", nodeMap, linkMap);
+            // Handle Custom Sampler linked to Guider
+            if (cfg == -1) {
+                JsonNode guiderNode = getLinkedNode(bestSampler, "guider", nodeMap, linkMap);
+                if (guiderNode != null) {
+                    cfg = resolveFloatParam(guiderNode, "cfg", nodeMap, linkMap);
+                }
+            }
             if (cfg == -1) cfg = extractCfgFromWidgets(bestSampler.get("widgets_values"));
 
             if (cfg > -1) {
@@ -125,11 +230,25 @@ public class ComfyUIStrategy implements MetadataStrategy {
                 results.put("CFG", cfgStr);
             }
 
-            // --- Sampler Logic (Sampler + Scheduler) ---
+            // --- Sampler/Scheduler Logic ---
             String samp = resolveStringParam(bestSampler, "sampler", nodeMap, linkMap);
+            // Handle Custom Sampler linked to KSamplerSelect
+            if (samp == null) {
+                JsonNode sampNode = getLinkedNode(bestSampler, "sampler", nodeMap, linkMap);
+                if (sampNode != null && sampNode.has("inputs") && sampNode.get("inputs").has("sampler_name")) {
+                    samp = sampNode.get("inputs").get("sampler_name").asText();
+                }
+            }
             if (samp == null) samp = extractKeyword(bestSampler.get("widgets_values"), SAMPLER_KEYWORDS);
 
             String sched = resolveStringParam(bestSampler, "scheduler", nodeMap, linkMap);
+            // Handle Custom Sampler linked to Sigmas/Scheduler
+            if (sched == null) {
+                JsonNode sigNode = getLinkedNode(bestSampler, "sigmas", nodeMap, linkMap);
+                if (sigNode != null && sigNode.has("inputs") && sigNode.get("inputs").has("scheduler")) {
+                    sched = sigNode.get("inputs").get("scheduler").asText();
+                }
+            }
             if (sched == null) sched = extractKeyword(bestSampler.get("widgets_values"), SCHEDULER_KEYWORDS);
 
             if (samp != null) {
@@ -139,13 +258,103 @@ public class ComfyUIStrategy implements MetadataStrategy {
                     results.put("Sampler", samp);
                 }
             } else if (sched != null) {
-                // Fallback if only scheduler is found
                 results.put("Sampler", sched);
             }
         }
     }
 
-    // --- HELPERS ---
+    // --- HELPERS & RECURSION FOR API ---
+
+    private JsonNode getLinkedNodeApi(JsonNode node, String inputName, JsonNode root) {
+        if (!node.has("inputs")) return null;
+        JsonNode inputs = node.get("inputs");
+        if (inputs.has(inputName)) {
+            JsonNode val = inputs.get(inputName);
+            if (val.isArray() && val.size() == 2) {
+                return root.get(val.get(0).asText());
+            }
+        }
+        return null;
+    }
+
+    private long resolveNumericParamRecursive(JsonNode node, String paramName, JsonNode root) {
+        if (!node.has("inputs")) return -1;
+        JsonNode inputs = node.get("inputs");
+        if (inputs.has(paramName)) {
+            JsonNode val = inputs.get(paramName);
+            if (isNumeric(val)) return asLongSafe(val);
+            if (val.isArray() && val.size() == 2) {
+                return resolveValueRecursive(root.get(val.get(0).asText()), root);
+            }
+        }
+        return -1;
+    }
+
+    private double resolveFloatParamRecursive(JsonNode node, String paramName, JsonNode root) {
+        if (!node.has("inputs")) return -1;
+        JsonNode inputs = node.get("inputs");
+        if (inputs.has(paramName)) {
+            JsonNode val = inputs.get(paramName);
+            if (isNumeric(val)) return val.asDouble();
+            if (val.isArray() && val.size() == 2) {
+                return resolveFloatValueRecursive(root.get(val.get(0).asText()), root);
+            }
+        }
+        return -1;
+    }
+
+    private String resolveStringParamRecursive(JsonNode node, String paramName, JsonNode root) {
+        if (!node.has("inputs")) return null;
+        JsonNode inputs = node.get("inputs");
+        if (inputs.has(paramName)) {
+            JsonNode val = inputs.get(paramName);
+            if (val.isTextual()) return val.asText();
+            if (val.isArray() && val.size() == 2) {
+                // Try to get text/string value from source node
+                JsonNode source = root.get(val.get(0).asText());
+                if (source != null && source.has("inputs")) {
+                    JsonNode srcIn = source.get("inputs");
+                    if (srcIn.has("Value")) return srcIn.get("Value").asText();
+                    if (srcIn.has("text")) return srcIn.get("text").asText();
+                    if (srcIn.has("string")) return srcIn.get("string").asText();
+                }
+            }
+        }
+        return null;
+    }
+
+    private long resolveValueRecursive(JsonNode node, JsonNode root) {
+        if (node == null || !node.has("inputs")) return -1;
+        JsonNode inputs = node.get("inputs");
+        if (inputs.has("Value")) return asLongSafe(inputs.get("Value"));
+        if (inputs.has("value")) return asLongSafe(inputs.get("value"));
+        if (inputs.has("seed")) return asLongSafe(inputs.get("seed"));
+        // recurse one level deeper if needed? (simple recursion for now)
+        return -1;
+    }
+
+    private double resolveFloatValueRecursive(JsonNode node, JsonNode root) {
+        if (node == null || !node.has("inputs")) return -1;
+        JsonNode inputs = node.get("inputs");
+        if (inputs.has("Value")) return inputs.get("Value").asDouble();
+        if (inputs.has("value")) return inputs.get("value").asDouble();
+        return -1;
+    }
+
+    // --- STANDARD UI HELPERS ---
+
+    private JsonNode getLinkedNode(JsonNode sourceNode, String inputName, Map<Integer, JsonNode> nodeMap, Map<Integer, Integer> linkMap) {
+        if (!sourceNode.has("inputs")) return null;
+        for (JsonNode input : sourceNode.get("inputs")) {
+            String name = input.get("name").asText().toLowerCase();
+            if (name.equals(inputName.toLowerCase()) && input.has("link") && input.get("link").isInt()) {
+                int linkId = input.get("link").asInt();
+                if (linkMap.containsKey(linkId)) return nodeMap.get(linkMap.get(linkId));
+            }
+        }
+        return null;
+    }
+
     private boolean isAllowedModelNode(String type) {
         if (IGNORED_MODEL_NODE_TYPES.stream().anyMatch(type::contains)) return false;
         return ALLOWED_MODEL_NODE_TYPES.stream().anyMatch(type::contains);
@@ -326,18 +535,17 @@ public class ComfyUIStrategy implements MetadataStrategy {
                         if (linkMap.containsKey(linkId)) {
                             int sourceId = linkMap.get(linkId);
                             JsonNode source = nodeMap.get(sourceId);
-                            if (source != null && source.has("widgets_values")) {
-                                JsonNode widgets = source.get("widgets_values");
-                                if (widgets != null) {
-                                    for (JsonNode w : widgets) {
+                            if (source != null) {
+                                if (source.has("widgets_values")) {
+                                    for (JsonNode w : source.get("widgets_values")) {
                                         if (isNumeric(w)) return w.asDouble();
                                     }
                                 }
-                            }
-                            // Also check inputs of source (e.g., if source is a param node)
-                            if (source != null && source.has("inputs") && source.get("inputs").has(paramName)) {
-                                JsonNode v = source.get("inputs").get(paramName);
-                                if (isNumeric(v)) return v.asDouble();
+                                // Check if source has explicit value input (BasicGuider/FluxGuidance)
+                                if (source.has("inputs") && source.get("inputs").has(paramName)) {
+                                    JsonNode v = source.get("inputs").get(paramName);
+                                    if (isNumeric(v)) return v.asDouble();
+                                }
                             }
                         }
                     }
@@ -375,19 +583,14 @@ public class ComfyUIStrategy implements MetadataStrategy {
                         int sourceId = linkMap.get(linkId);
                         JsonNode source = nodeMap.get(sourceId);
                         if (source != null) {
-                            // 1. Try Widgets (Standard)
                             if (source.has("widgets_values")) {
                                 JsonNode w = source.get("widgets_values").get(0);
                                 if (w != null && w.isTextual()) return w.asText();
                             }
-                            // 2. Try Inputs (KSamplerSelect often stores name in 'inputs' not widgets)
+                            // Inputs fallback for API style nodes inside UI json
                             if (source.has("inputs")) {
-                                if (source.get("inputs").has("sampler_name")) {
-                                    return source.get("inputs").get("sampler_name").asText();
-                                }
-                                if (source.get("inputs").has("scheduler")) {
-                                    return source.get("inputs").get("scheduler").asText();
-                                }
+                                if (source.get("inputs").has("sampler_name")) return source.get("inputs").get("sampler_name").asText();
+                                if (source.get("inputs").has("scheduler")) return source.get("inputs").get("scheduler").asText();
                             }
                         }
                     }

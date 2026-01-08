@@ -17,35 +17,45 @@ public class TextParamsParser {
             return new HashMap<>();
         }
 
-        // 1. Automatic1111 / Hive (Standard Text-Based)
-        if (text.contains("Steps: ") && text.contains("Sampler: ")) {
-            return new CommonStrategy().parse(text);
-        }
-
-        // 2. ComfyUI (JSON-Based)
+        // 1. JSON Formats (ComfyUI)
+        // Checked first to identify API formats that might contain "Steps:" text inside them
         if (text.trim().startsWith("{")) {
             try {
                 JsonNode root = mapper.readTree(text);
                 Map<String, String> results = new HashMap<>();
                 ComfyUIStrategy strategy = new ComfyUIStrategy();
 
-                // CASE A: Standard Workflow (Has "nodes" array)
+                // CASE A: Standard UI Workflow (Has "nodes" array)
                 if (root.has("nodes")) {
                     for (JsonNode node : root.get("nodes")) {
                         processComfyNode(node, strategy, results);
                     }
+                    // Pass the whole root for strategy to handle global links if needed
+                    strategy.extract("nodes_wrapper", root, null, results);
                 }
                 // CASE B: API Format (Root keys are Node IDs "1", "2", ...)
-                // This handles Qwen workflow
                 else {
-                    Iterator<Map.Entry<String, JsonNode>> fields = root.fields();
-                    while (fields.hasNext()) {
-                        Map.Entry<String, JsonNode> entry = fields.next();
-                        JsonNode node = entry.getValue();
+                    boolean isApi = false;
+                    Iterator<JsonNode> it = root.elements();
+                    while (it.hasNext()) {
+                        if (it.next().has("class_type")) {
+                            isApi = true;
+                            break;
+                        }
+                    }
 
-                        // Valid API nodes usually have "inputs" and "class_type"
-                        if (node.has("inputs") && node.has("class_type")) {
-                            processComfyNode(node, strategy, results);
+                    if (isApi) {
+                        // Pass the entire root to the strategy for API processing (resolving links)
+                        strategy.extract("api_nodes", root, null, results);
+                    } else {
+                        // Fallback iteration
+                        Iterator<Map.Entry<String, JsonNode>> fields = root.fields();
+                        while (fields.hasNext()) {
+                            Map.Entry<String, JsonNode> entry = fields.next();
+                            JsonNode node = entry.getValue();
+                            if (node.has("inputs") && node.has("class_type")) {
+                                processComfyNode(node, strategy, results);
+                            }
                         }
                     }
                 }
@@ -55,6 +65,11 @@ public class TextParamsParser {
             } catch (Exception e) {
                 // Not a valid ComfyUI JSON, fall through
             }
+        }
+
+        // 2. Automatic1111 / Hive (Standard Text-Based)
+        if (text.contains("Steps: ") && text.contains("Sampler: ")) {
+            return new CommonStrategy().parse(text);
         }
 
         // 3. InvokeAI
