@@ -49,30 +49,60 @@ public class CommonStrategy implements MetadataStrategy {
 
         while (matcher.find()) {
             String key = matcher.group(1).trim();
+            // Normalize key for case-insensitive matching
+            String lowerKey = key.toLowerCase();
             String value = matcher.group(2).trim();
 
-            switch (key) {
-                case "Steps" -> results.put("Steps", value);
-                case "Sampler" -> results.put("Sampler", value);
-                case "CFG scale" -> results.put("CFG", value);
-                case "Seed" -> results.put("Seed", value);
-                case "Size" -> {
+            switch (lowerKey) {
+                case "steps" -> results.put("Steps", value);
+                case "sampler" -> results.put("Sampler", value);
+                case "schedule type", "scheduler" -> results.put("Scheduler", value);
+                case "cfg scale", "cfg" -> results.put("CFG", value);
+                case "distilled cfg scale", "distilled cfg" -> results.put("Distilled CFG", value);
+                case "seed" -> results.put("Seed", value);
+                case "size" -> {
                     String[] dim = value.split("x");
                     if (dim.length == 2) {
                         results.put("Width", dim[0]);
                         results.put("Height", dim[1]);
                     }
                 }
-                case "Model" -> results.put("Model", value);
-                case "Model hash" -> results.put("Model Hash", value);
-                case "Denoising strength" -> results.put("Denoise", value);
-                case "Hires upscale" -> results.put("Hires. fix", "Enabled (" + value + "x)");
-                case "Lora hashes" -> {
+                case "model" -> results.put("Model", value);
+                case "model hash" -> results.put("Model Hash", value);
+                case "denoising strength" -> results.put("Denoise", value);
+                case "hires upscale" -> results.put("Hires. fix", "Enabled (" + value + "x)");
+                case "lora hashes" -> {
                     if (!results.containsKey("Loras")) {
                         results.put("Loras", value);
                     }
                 }
             }
+        }
+
+        // Logic to merge Scheduler into Sampler if separated (Forge style)
+        if (results.containsKey("Scheduler")) {
+            String sampler = results.get("Sampler");
+            String scheduler = results.get("Scheduler");
+            if (sampler != null) {
+                if (!sampler.toLowerCase().contains(scheduler.toLowerCase())) {
+                    results.put("Sampler", sampler + " (" + scheduler + ")");
+                }
+            } else {
+                results.put("Sampler", scheduler);
+            }
+            results.remove("Scheduler");
+        }
+
+        // Logic to merge Distilled CFG into CFG (Flux style)
+        if (results.containsKey("Distilled CFG")) {
+            String cfg = results.get("CFG");
+            String dist = results.get("Distilled CFG");
+            if (cfg != null) {
+                results.put("CFG", cfg + " (distilled " + dist + ")");
+            } else {
+                results.put("CFG", dist + " (distilled)");
+            }
+            results.remove("Distilled CFG");
         }
 
         return results;
@@ -108,8 +138,6 @@ public class CommonStrategy implements MetadataStrategy {
         else if (key.equals("seed") || key.equals("noise_seed")) results.put("Seed", text);
         else if (key.equals("cfg") || key.equals("cfgscale")) results.put("CFG", text);
 
-            // Only extract Width/Height if valid (> 0). This prevents overwriting
-            // valid physical dimensions with "0" from generic nodes
         else if (key.equals("width")) {
             if (isValidSize(text)) results.put("Width", text);
         }
