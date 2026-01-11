@@ -41,7 +41,7 @@ public class ExtractorView extends ScrollPane {
     private final TextField cfgVal = createSelectableField("-");
     private final TextField seedVal = createSelectableField("-");
     private final TextField sizeVal = createSelectableField("-");
-    private final TextField lorasVal = createSelectableField("-");
+    private final TextArea lorasVal = new TextArea("-");
 
     private final ImageView previewImageView = new ImageView();
     private final StackPane previewContainer = new StackPane();
@@ -91,9 +91,10 @@ public class ExtractorView extends ScrollPane {
         VBox modelCard = createStatCard("Model", modelVal, FontAwesome.CUBE);
         VBox softwareCard = createStatCard("Software", softwareVal, FontAwesome.TERMINAL);
 
-        HBox.setHgrow(modelCard, Priority.ALWAYS);
+        // ROW 1: Model | Software
+        HBox.setHgrow(modelCard, Priority.ALWAYS); // Model takes flexible space
+        softwareCard.setPrefWidth(250);            // Fixed space for "ComfyUI"
         HBox.setHgrow(softwareCard, Priority.NEVER);
-        softwareCard.setMinWidth(100);
 
         HBox row1 = new HBox(12, modelCard, softwareCard);
 
@@ -103,13 +104,26 @@ public class ExtractorView extends ScrollPane {
         VBox samplerCard = createStatCard("Sampler", samplerVal, FontAwesome.SLIDERS);
         VBox sizeCard = createStatCard("Size", sizeVal, FontAwesome.IMAGE);
 
+        // ROW 2: Steps | CFG | Seed | Sampler | Size
         stepsCard.setPrefWidth(90);
         cfgCard.setPrefWidth(90);
-        HBox.setHgrow(seedCard, Priority.ALWAYS);
-        samplerCard.setPrefWidth(140);
+
+        seedCard.setPrefWidth(200);
+        HBox.setHgrow(seedCard, Priority.NEVER);
+
+        HBox.setHgrow(samplerCard, Priority.ALWAYS);
+
         sizeCard.setPrefWidth(140);
+        HBox.setHgrow(sizeCard, Priority.NEVER);
 
         HBox row2 = new HBox(12, stepsCard, cfgCard, seedCard, samplerCard, sizeCard);
+
+        // Loras TextArea
+        lorasVal.setEditable(false);
+        lorasVal.setWrapText(true);
+        lorasVal.setPrefHeight(80);
+        lorasVal.getStyleClass().add("text-area");
+        lorasVal.setStyle("-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0;");
 
         statsWrapper.getChildren().addAll(row1, row2, createStatCard("Loras Used", lorasVal, FontAwesome.PUZZLE_PIECE));
 
@@ -385,7 +399,8 @@ public class ExtractorView extends ScrollPane {
         return field;
     }
 
-    private VBox createStatCard(String title, TextField valField, org.kordamp.ikonli.Ikon icon) {
+    // Updated to accept generic Control (TextField or TextArea)
+    private VBox createStatCard(String title, Control valField, org.kordamp.ikonli.Ikon icon) {
         VBox card = new VBox(5);
         card.getStyleClass().add("income-stats-box");
 

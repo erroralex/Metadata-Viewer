@@ -118,8 +118,12 @@ public class CommonStrategy implements MetadataStrategy {
             String strength = m.group(2);
 
             if (loraBuilder.length() > 0) loraBuilder.append(", ");
-            loraBuilder.append(name);
-            if (strength != null) loraBuilder.append(" (").append(strength).append(")");
+            loraBuilder.append("<lora:").append(name);
+
+            if (strength != null) {
+                loraBuilder.append(":").append(strength);
+            }
+            loraBuilder.append(">");
         }
 
         if (loraBuilder.length() > 0) {

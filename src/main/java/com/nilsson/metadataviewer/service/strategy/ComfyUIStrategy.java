@@ -3,18 +3,19 @@ package com.nilsson.metadataviewer.service.strategy;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.*;
 import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ComfyUIStrategy implements MetadataStrategy {
 
-    private static final DecimalFormat DF = new DecimalFormat("#.##");
+    // Ensure dot separator for decimals regardless of locale
+    private static final DecimalFormat DF = new DecimalFormat("#.##", new DecimalFormatSymbols(Locale.US));
 
     private static final Set<String> VALID_EXTENSIONS = new HashSet<>(Arrays.asList(
             ".safetensors", ".ckpt", ".gguf", ".pt", ".pth", ".bin"
     ));
 
-    // Removed "fp16" and "fp8" from ignore list to allow models like "z-image-turbo-fp8..."
     private static final Set<String> IGNORED_FILENAME_PATTERNS = new HashSet<>(Arrays.asList(
             "upscale", "esrgan", "controlnet", "ipadapter", "faceid", "adapter",
             "clip", "vae", "preview", "t5", "encoder", "refiner",
@@ -54,12 +55,10 @@ public class ComfyUIStrategy implements MetadataStrategy {
             // Detect Raw API Format (Node ID keys at root)
             else if (isNodeId(key) && value.has("class_type") && value.has("inputs")) {
                 if (!results.containsKey("_api_graph_analyzed")) {
-                    // Process the WHOLE graph (parentNode is the root object)
                     processApiWorkflow(parentNode, results);
                     results.put("_api_graph_analyzed", "true");
                 }
             }
-            // Fallback for simple inputs
             else if (key.equalsIgnoreCase("inputs") && value.isObject()) {
                 boolean skipCoreParams = results.containsKey("_api_graph_analyzed");
                 processInputsBlock(value, parentNode, results, skipCoreParams);
@@ -79,26 +78,27 @@ public class ComfyUIStrategy implements MetadataStrategy {
         JsonNode bestSampler = null;
         long maxSteps = -1;
         double fluxGuidance = -1;
-
         String directSchedulerFound = null;
 
         Iterator<Map.Entry<String, JsonNode>> fields = root.fields();
         while (fields.hasNext()) {
             Map.Entry<String, JsonNode> entry = fields.next();
             JsonNode node = entry.getValue();
+            String type = getNodeType(node).toLowerCase();
 
             // 1. Extract globals from every node (Prompts, Models, etc.)
             if (node.has("inputs")) {
-                // Pass false to ensure we capture everything initially
                 processInputsBlock(node.get("inputs"), node, results, false);
-
                 double g = resolveFloatParamRecursive(node, "guidance", root);
                 if (g > -1) fluxGuidance = g;
+
+                // SPECIAL HANDLER: Power Lora Loader
+                if (type.contains("power lora loader")) {
+                    extractPowerLoras(node.get("inputs"), results);
+                }
             }
 
             // 2. Find Best Sampler & Detect Scheduler Nodes
-            String type = getNodeType(node).toLowerCase();
-
             if (type.contains("scheduler") && node.has("inputs")) {
                 JsonNode schedVal = node.get("inputs").get("scheduler");
                 if (schedVal != null && schedVal.isTextual()) {
@@ -107,7 +107,6 @@ public class ComfyUIStrategy implements MetadataStrategy {
             }
 
             long steps = -1;
-
             if (type.contains("samplercustom")) {
                 JsonNode sigmasNode = getLinkedNodeApi(node, "sigmas", root);
                 if (sigmasNode != null) steps = resolveNumericParamRecursive(sigmasNode, "steps", root);
@@ -131,10 +130,7 @@ public class ComfyUIStrategy implements MetadataStrategy {
                 JsonNode noiseNode = getLinkedNodeApi(bestSampler, "noise", root);
                 if (noiseNode != null) s = resolveNumericParamRecursive(noiseNode, "noise_seed", root);
             }
-
-            if (s > -1) {
-                results.put("Seed", String.valueOf(s));
-            }
+            if (s > -1) results.put("Seed", String.valueOf(s));
 
             double cfg = resolveFloatParamRecursive(bestSampler, "cfg", root);
             if (cfg == -1) {
@@ -162,13 +158,8 @@ public class ComfyUIStrategy implements MetadataStrategy {
                 if (sigNode != null) sched = resolveStringParamRecursive(sigNode, "scheduler", root);
             }
 
-            if (sched == null && directSchedulerFound != null) {
-                sched = directSchedulerFound;
-            }
-
-            if (sched == null && results.containsKey("Scheduler")) {
-                sched = results.get("Scheduler");
-            }
+            if (sched == null && directSchedulerFound != null) sched = directSchedulerFound;
+            if (sched == null && results.containsKey("Scheduler")) sched = results.get("Scheduler");
 
             if (samp != null) {
                 if (sched != null) {
@@ -182,10 +173,11 @@ public class ComfyUIStrategy implements MetadataStrategy {
         }
     }
 
-    // --- STANDARD UI FORMAT HANDLING ---
+    // --- UI FORMAT PROCESSING ---
     private void processNodes(JsonNode nodes, JsonNode links, Map<String, String> results) {
         Map<Integer, Integer> linkMap = buildLinkMap(links);
         Map<Integer, JsonNode> nodeMap = buildNodeMap(nodes);
+        Map<Integer, List<JsonNode>> linkDestMap = buildLinkDestMap(nodes);
 
         JsonNode bestSampler = null;
         long maxSteps = -1;
@@ -230,11 +222,29 @@ public class ComfyUIStrategy implements MetadataStrategy {
                 else extractModelFromList(widgets, results);
             }
 
+            // SPECIAL HANDLER: Power Lora Loader (UI Format)
+            if (type.contains("power lora loader") && node.has("inputs")) {
+                extractPowerLoras(node.get("inputs"), results);
+            }
+
             // 5. PROMPTS
             if (isTextOrPrimitiveNode(node) && widgets != null) {
-                if (title.contains("negative")) extractPromptText(node, widgets, results, "Negative");
-                else if (title.contains("positive")) extractPromptText(node, widgets, results, "Prompt");
-                else extractPrompt(node, widgets, results);
+                if (!hasOutputs(node) && !type.contains("showtext") && !type.contains("note")) {
+                    continue;
+                }
+
+                String role = detectTextRole(node, linkDestMap);
+                if ("Disconnected".equals(role)) continue;
+
+                if ("Unknown".equals(role) || "Prompt".equals(role)) {
+                    if (title.contains("negative") || isNegativeNode(node)) {
+                        role = "Negative";
+                    } else {
+                        role = "Prompt";
+                    }
+                }
+
+                extractPromptText(node, widgets, results, role);
             }
         }
 
@@ -249,7 +259,6 @@ public class ComfyUIStrategy implements MetadataStrategy {
                 if (s > -1 && !results.containsKey("Seed")) results.put("Seed", String.valueOf(s));
             }
 
-            // --- CFG Logic ---
             double cfg = resolveFloatParam(bestSampler, "cfg", nodeMap, linkMap);
             if (cfg == -1) {
                 JsonNode guiderNode = getLinkedNode(bestSampler, "guider", nodeMap, linkMap);
@@ -267,7 +276,6 @@ public class ComfyUIStrategy implements MetadataStrategy {
                 results.put("CFG", cfgStr);
             }
 
-            // --- Sampler/Scheduler Logic ---
             String samp = resolveStringParam(bestSampler, "sampler", nodeMap, linkMap);
             if (samp == null) {
                 JsonNode sampNode = getLinkedNode(bestSampler, "sampler", nodeMap, linkMap);
@@ -298,16 +306,144 @@ public class ComfyUIStrategy implements MetadataStrategy {
         }
     }
 
-    // --- HELPERS & RECURSION FOR API ---
+    // --- HELPER: Unified Lora Formatter ---
+    private String formatLoraString(String name, double strength) {
+        // Format: <lora:name:strength>
+        return "<lora:" + name + ":" + DF.format(strength) + ">";
+    }
+
+    private void extractPowerLoras(JsonNode inputs, Map<String, String> results) {
+        if (inputs == null) return;
+        Iterator<Map.Entry<String, JsonNode>> fields = inputs.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            String key = entry.getKey();
+            JsonNode val = entry.getValue();
+
+            if (key.startsWith("lora") && val.isObject()) {
+                boolean isOn = val.has("on") && val.get("on").asBoolean(false);
+                if (isOn && val.has("lora")) {
+                    String name = val.get("lora").asText();
+                    double strength = val.has("strength") ? val.get("strength").asDouble(1.0) : 1.0;
+
+                    if (isValidModelFile(name)) {
+                        name = cleanFilename(name);
+                        appendResult(results, "Loras", formatLoraString(name, strength));
+                    }
+                }
+            }
+        }
+    }
+
+    private void extractLoras(JsonNode widgets, Map<String, String> results) {
+        if (widgets == null) return;
+        String name = null;
+        double strength = 1.0;
+        for (JsonNode w : widgets) {
+            if (w.isTextual() && isValidModelFile(w.asText())) name = cleanFilename(w.asText());
+            else if (isNumeric(w)) strength = w.asDouble();
+        }
+        if (name != null) {
+            String existing = results.getOrDefault("Loras", "");
+            if (!existing.contains(name)) {
+                appendResult(results, "Loras", formatLoraString(name, strength));
+            }
+        }
+    }
+
+    private void extractLorasFromPrompt(String promptText, Map<String, String> results) {
+        if (promptText == null || !promptText.contains("<lora:")) return;
+        Matcher m = LORA_TAG_PATTERN.matcher(promptText);
+        while (m.find()) {
+            String name = cleanFilename(m.group(1));
+            String strVal = m.group(2);
+            double strength = 1.0;
+            if (strVal != null) { try { strength = Double.parseDouble(strVal); } catch (NumberFormatException e) {} }
+
+            String existing = results.getOrDefault("Loras", "");
+            if (!existing.contains(name)) {
+                appendResult(results, "Loras", formatLoraString(name, strength));
+            }
+        }
+    }
+
+    private String detectTextRole(JsonNode node, Map<Integer, List<JsonNode>> linkDestMap) {
+        if (!node.has("outputs")) return "Unknown";
+        return traceNodeOutputs(node, linkDestMap, 0);
+    }
+
+    private String traceNodeOutputs(JsonNode node, Map<Integer, List<JsonNode>> linkDestMap, int depth) {
+        if (depth > 12) return "Unknown";
+        boolean hasAnyValidPath = false;
+        if (node.has("outputs")) {
+            for (JsonNode output : node.get("outputs")) {
+                if (output.has("links")) {
+                    for (JsonNode link : output.get("links")) {
+                        int linkId = link.asInt();
+                        List<JsonNode> destinations = linkDestMap.get(linkId);
+                        if (destinations != null) {
+                            for (JsonNode dest : destinations) {
+                                if (isLinkBlocked(dest, linkId)) continue;
+                                hasAnyValidPath = true;
+                                String destType = getNodeType(dest);
+                                if (destType.contains("sampler")) {
+                                    if (dest.has("inputs")) {
+                                        for (JsonNode input : dest.get("inputs")) {
+                                            if (input.has("link") && input.get("link").asInt() == linkId) {
+                                                String inputName = input.get("name").asText().toLowerCase();
+                                                if (inputName.contains("negative")) return "Negative";
+                                                if (inputName.contains("positive")) return "Prompt";
+                                            }
+                                        }
+                                    }
+                                }
+                                if (destType.contains("reroute") || destType.contains("pipe") || destType.contains("bus")
+                                        || destType.contains("switch") || destType.contains("concatenate")
+                                        || destType.contains("replace") || destType.contains("processor")
+                                        || destType.contains("string") || destType.contains("text")) {
+                                    String res = traceNodeOutputs(dest, linkDestMap, depth + 1);
+                                    if ("Negative".equals(res) || "Positive".equals(res) || "Prompt".equals(res)) return res;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return hasAnyValidPath ? "Unknown" : "Disconnected";
+    }
+
+    private boolean isLinkBlocked(JsonNode destNode, int incomingLinkId) {
+        String type = getNodeType(destNode);
+        if (type.contains("jps_dynamicpromptconcatenate")) {
+            if (destNode.has("inputs") && destNode.has("widgets_values")) {
+                JsonNode inputs = destNode.get("inputs");
+                JsonNode widgets = destNode.get("widgets_values");
+                for (JsonNode input : inputs) {
+                    if (input.has("link") && input.get("link").asInt() == incomingLinkId) {
+                        String name = input.get("name").asText();
+                        if (name.startsWith("text_")) {
+                            try {
+                                int index = Integer.parseInt(name.replace("text_", ""));
+                                if (index < widgets.size()) {
+                                    JsonNode toggle = widgets.get(index);
+                                    if (toggle.isBoolean() && !toggle.asBoolean()) return true;
+                                }
+                            } catch (NumberFormatException e) {}
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }
 
     private JsonNode getLinkedNodeApi(JsonNode node, String inputName, JsonNode root) {
         if (!node.has("inputs")) return null;
         JsonNode inputs = node.get("inputs");
         if (inputs.has(inputName)) {
             JsonNode val = inputs.get(inputName);
-            if (val.isArray() && val.size() == 2) {
-                return root.get(val.get(0).asText());
-            }
+            if (val.isArray() && val.size() == 2) return root.get(val.get(0).asText());
         }
         return null;
     }
@@ -318,9 +454,7 @@ public class ComfyUIStrategy implements MetadataStrategy {
         if (inputs.has(paramName)) {
             JsonNode val = inputs.get(paramName);
             if (isNumeric(val)) return asLongSafe(val);
-            if (val.isArray() && val.size() == 2) {
-                return resolveValueRecursive(root.get(val.get(0).asText()), root);
-            }
+            if (val.isArray() && val.size() == 2) return resolveValueRecursive(root.get(val.get(0).asText()), root);
         }
         return -1;
     }
@@ -331,9 +465,7 @@ public class ComfyUIStrategy implements MetadataStrategy {
         if (inputs.has(paramName)) {
             JsonNode val = inputs.get(paramName);
             if (isNumeric(val)) return val.asDouble();
-            if (val.isArray() && val.size() == 2) {
-                return resolveFloatValueRecursive(root.get(val.get(0).asText()), root);
-            }
+            if (val.isArray() && val.size() == 2) return resolveFloatValueRecursive(root.get(val.get(0).asText()), root);
         }
         return -1;
     }
@@ -373,8 +505,6 @@ public class ComfyUIStrategy implements MetadataStrategy {
         if (inputs.has("value")) return inputs.get("value").asDouble();
         return -1;
     }
-
-    // --- STANDARD UI HELPERS ---
 
     private JsonNode getLinkedNode(JsonNode sourceNode, String inputName, Map<Integer, JsonNode> nodeMap, Map<Integer, Integer> linkMap) {
         if (!sourceNode.has("inputs")) return null;
@@ -445,39 +575,6 @@ public class ComfyUIStrategy implements MetadataStrategy {
         }
     }
 
-    // Backwards compatibility overload
-    private void processInputsBlock(JsonNode inputs, JsonNode node, Map<String, String> results) {
-        processInputsBlock(inputs, node, results, false);
-    }
-
-    private void extractLorasFromPrompt(String promptText, Map<String, String> results) {
-        if (promptText == null || !promptText.contains("<lora:")) return;
-
-        Matcher m = LORA_TAG_PATTERN.matcher(promptText);
-        while (m.find()) {
-            String name = m.group(1);
-            String strVal = m.group(2);
-            double strength = 1.0;
-
-            if (strVal != null) {
-                try {
-                    strength = Double.parseDouble(strVal);
-                } catch (NumberFormatException e) {
-                    // ignore, keep 1.0
-                }
-            }
-
-            if (name != null) {
-                name = cleanFilename(name); // Normalize name
-                String entry = name + (strength != 1.0 ? " (" + DF.format(strength) + ")" : "");
-                String existing = results.getOrDefault("Loras", "");
-                if (!existing.contains(name)) {
-                    results.put("Loras", existing.isEmpty() ? entry : existing + ", " + entry);
-                }
-            }
-        }
-    }
-
     private long extractFirstNumeric(JsonNode widgets) {
         if (widgets == null) return -1;
         for (JsonNode w : widgets) if (isNumeric(w)) return asLongSafe(w);
@@ -487,6 +584,21 @@ public class ComfyUIStrategy implements MetadataStrategy {
     private Map<Integer, Integer> buildLinkMap(JsonNode links) {
         Map<Integer, Integer> map = new HashMap<>();
         if (links != null) for (JsonNode link : links) if (link.size() >= 2) map.put(link.get(0).asInt(), link.get(1).asInt());
+        return map;
+    }
+
+    private Map<Integer, List<JsonNode>> buildLinkDestMap(JsonNode nodes) {
+        Map<Integer, List<JsonNode>> map = new HashMap<>();
+        for (JsonNode node : nodes) {
+            if (node.has("inputs")) {
+                for (JsonNode input : node.get("inputs")) {
+                    if (input.has("link") && input.get("link").isInt()) {
+                        int linkId = input.get("link").asInt();
+                        map.computeIfAbsent(linkId, k -> new ArrayList<>()).add(node);
+                    }
+                }
+            }
+        }
         return map;
     }
 
@@ -508,10 +620,7 @@ public class ComfyUIStrategy implements MetadataStrategy {
     }
 
     private long asLongSafe(JsonNode node) {
-        try {
-            if (node.isNumber()) return node.asLong();
-            return Long.parseLong(node.asText().split("\\.")[0]);
-        } catch (Exception e) { return -1; }
+        try { return node.isNumber() ? node.asLong() : Long.parseLong(node.asText().split("\\.")[0]); } catch (Exception e) { return -1; }
     }
 
     private boolean isValidModelFile(String filename) {
@@ -519,8 +628,7 @@ public class ComfyUIStrategy implements MetadataStrategy {
         String lower = filename.toLowerCase();
         if (VALID_EXTENSIONS.stream().noneMatch(lower::endsWith)) return false;
         if (IGNORED_FILENAME_PATTERNS.stream().anyMatch(lower::contains)) return false;
-        if (lower.equals("true") || lower.equals("false") || lower.equals("none")) return false;
-        return true;
+        return !lower.equals("true") && !lower.equals("false") && !lower.equals("none");
     }
 
     private String cleanFilename(String path) {
@@ -533,8 +641,7 @@ public class ComfyUIStrategy implements MetadataStrategy {
         if (text.length() < 5) return false;
         if (isValidModelFile(text)) return false;
         if (text.startsWith("comma") || text.startsWith("newline")) return false;
-        if (text.equalsIgnoreCase("true") || text.equalsIgnoreCase("false")) return false;
-        return true;
+        return !text.equalsIgnoreCase("true") && !text.equalsIgnoreCase("false");
     }
 
     private String getNodeType(JsonNode node) {
@@ -551,7 +658,9 @@ public class ComfyUIStrategy implements MetadataStrategy {
 
     private boolean isTextOrPrimitiveNode(JsonNode node) {
         String type = getNodeType(node);
-        return type.contains("text") || type.contains("prompt") || type.contains("primitive") || type.contains("string");
+        return type.contains("text") || type.contains("prompt") || type.contains("primitive") || type.contains("string") ||
+                type.contains("portrait") || type.contains("processor") || type.contains("wildcard") ||
+                type.contains("manager") || type.contains("janus");
     }
 
     private boolean isNegativeNode(JsonNode node) {
@@ -559,6 +668,17 @@ public class ComfyUIStrategy implements MetadataStrategy {
         if (title.contains("negative")) return true;
         String type = getNodeType(node);
         return type.contains("negative") || type.contains("neg ");
+    }
+
+    private boolean hasOutputs(JsonNode node) {
+        if (!node.has("outputs")) return false;
+        for (JsonNode output : node.get("outputs")) {
+            if (output.has("links")) {
+                JsonNode links = output.get("links");
+                if (links.isArray() && links.size() > 0) return true;
+            }
+        }
+        return false;
     }
 
     private void appendResult(Map<String, String> results, String key, String newText) {
@@ -579,10 +699,7 @@ public class ComfyUIStrategy implements MetadataStrategy {
                         JsonNode source = nodeMap.get(sourceId);
                         if (source != null) {
                             long val = extractFirstNumeric(source.get("widgets_values"));
-                            if (val == -1 && source.has("inputs")) {
-                                // Simple single-level recursion fallback
-                            }
-                            return val;
+                            if (val > -1) return val;
                         }
                     }
                 }
@@ -607,9 +724,7 @@ public class ComfyUIStrategy implements MetadataStrategy {
                             JsonNode source = nodeMap.get(sourceId);
                             if (source != null) {
                                 if (source.has("widgets_values")) {
-                                    for (JsonNode w : source.get("widgets_values")) {
-                                        if (isNumeric(w)) return w.asDouble();
-                                    }
+                                    for (JsonNode w : source.get("widgets_values")) if (isNumeric(w)) return w.asDouble();
                                 }
                                 if (source.has("inputs") && source.get("inputs").has(paramName)) {
                                     JsonNode v = source.get("inputs").get(paramName);
@@ -625,7 +740,6 @@ public class ComfyUIStrategy implements MetadataStrategy {
                 }
             }
         }
-
         if (node.has("widgets_values")) {
             for (JsonNode w : node.get("widgets_values")) {
                 if (isNumeric(w) && !w.isBoolean()) {
@@ -642,9 +756,7 @@ public class ComfyUIStrategy implements MetadataStrategy {
         for (JsonNode input : node.get("inputs")) {
             String name = input.get("name").asText().toLowerCase();
             if (name.contains(paramName)) {
-                if (input.has("widget") && input.get("widget").has("value")) {
-                    return input.get("widget").get("value").asText();
-                }
+                if (input.has("widget") && input.get("widget").has("value")) return input.get("widget").get("value").asText();
                 if (input.has("link") && input.get("link").isInt()) {
                     int linkId = input.get("link").asInt();
                     if (linkMap.containsKey(linkId)) {
@@ -677,21 +789,6 @@ public class ComfyUIStrategy implements MetadataStrategy {
         }
     }
 
-    private void extractLoras(JsonNode widgets, Map<String, String> results) {
-        if (widgets == null) return;
-        String name = null;
-        double strength = 1.0;
-        for (JsonNode w : widgets) {
-            if (w.isTextual() && isValidModelFile(w.asText())) name = cleanFilename(w.asText());
-            else if (isNumeric(w)) strength = w.asDouble();
-        }
-        if (name != null) {
-            String entry = name + (strength != 1.0 ? " (" + DF.format(strength) + ")" : "");
-            String existing = results.getOrDefault("Loras", "");
-            if (!existing.contains(name)) results.put("Loras", existing.isEmpty() ? entry : existing + ", " + entry);
-        }
-    }
-
     private long extractStepsFromWidgets(JsonNode widgets) {
         if (widgets == null) return -1;
         for (JsonNode w : widgets) {
@@ -706,58 +803,40 @@ public class ComfyUIStrategy implements MetadataStrategy {
 
     private long extractSeedFromWidgets(JsonNode widgets) {
         if (widgets == null) return -1;
-        for (JsonNode w : widgets) {
-            if (isNumeric(w)) {
-                long val = w.asLong();
-                if (val > 1000000) return val;
-            }
-        }
+        for (JsonNode w : widgets) if (isNumeric(w)) { long val = w.asLong(); if (val > 1000000) return val; }
         return -1;
     }
 
     private double extractCfgFromWidgets(JsonNode widgets) {
         if (widgets == null) return -1;
-        for (JsonNode w : widgets) {
-            if (isNumeric(w)) {
-                double val = w.asDouble();
-                if (val > 0 && val <= 50.0) return val;
-            }
-        }
+        for (JsonNode w : widgets) if (isNumeric(w)) { double val = w.asDouble(); if (val > 0 && val <= 50.0) return val; }
         return -1;
     }
 
     private String extractKeyword(JsonNode widgets, Set<String> keywords) {
         if (widgets == null) return null;
-        for (JsonNode w : widgets) {
-            if (w.isTextual()) {
-                String txt = w.asText().toLowerCase();
-                if (keywords.stream().anyMatch(txt::contains)) return w.asText();
-            }
-        }
+        for (JsonNode w : widgets) if (w.isTextual() && keywords.stream().anyMatch(w.asText().toLowerCase()::contains)) return w.asText();
         return null;
     }
 
     private void extractPromptText(JsonNode node, JsonNode widgets, Map<String, String> results, String targetKey) {
         if (widgets == null) return;
+
+        if (node.has("inputs")) {
+            for (JsonNode input : node.get("inputs")) {
+                String name = input.get("name").asText().toLowerCase();
+                if ((name.equals("text") || name.equals("string") || name.equals("prompt")) &&
+                        input.has("link") && !input.get("link").isNull()) {
+                    return;
+                }
+            }
+        }
+
         for (JsonNode w : widgets) {
             if (w.isTextual()) {
                 String txt = w.asText().trim();
                 if (isValidPrompt(txt)) {
                     appendResult(results, targetKey, txt);
-                    extractLorasFromPrompt(txt, results);
-                }
-            }
-        }
-    }
-
-    private void extractPrompt(JsonNode node, JsonNode widgets, Map<String, String> results) {
-        if (widgets == null) return;
-        for (JsonNode w : widgets) {
-            if (w.isTextual()) {
-                String txt = w.asText().trim();
-                if (isValidPrompt(txt)) {
-                    String target = isNegativeNode(node) ? "Negative" : "Prompt";
-                    appendResult(results, target, txt);
                     extractLorasFromPrompt(txt, results);
                 }
             }
