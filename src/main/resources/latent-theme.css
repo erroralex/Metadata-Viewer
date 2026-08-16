@@ -1,0 +1,209 @@
+/*
+ * METADATA VIEWER - APPLICATION THEME
+ * Built from the Latent Design System tokens.
+ * Source: C:\Users\error\IdeaProjects\Projects\Latent-Design-System\tokens\*.css
+ */
+
+.root {
+    /* --- Color Palette (Latent tokens) --- */
+    -app-bg-main:       #0A0A0D; /* --color-bg-canvas / --gray-950 */
+    -app-bg-secondary:  #0E0F13; /* --color-bg-base */
+    -app-bg-card:       #14151B; /* --color-surface-1 / --gray-850 */
+    -app-bg-card-raised: #23252F; /* --color-surface-2 / --gray-700 */
+    -app-accent:        #4FD8D0; /* --color-accent-primary / --cyan-500 */
+    -app-accent-hover:  #67E0D8; /* --cyan-400 */
+    -app-accent-secondary: #9B7EF5; /* --color-accent-secondary / --violet-500 */
+    -app-text-primary:  #F2F3F7; /* --color-text-primary */
+    -app-text-muted:    #9294A3; /* --color-text-secondary / --gray-300 */
+    -app-text-tertiary: #6F7180; /* --color-text-tertiary / --gray-400 */
+    -app-border-subtle: rgba(255,255,255,0.10); /* --color-border-default */
+    -app-warning-red:   #F2665B; /* --color-danger */
+
+    /* --- Radii (Latent tokens) --- */
+    -app-radius-sm: 6px;
+    -app-radius-md: 8px;
+    -app-radius-lg: 12px;
+
+    /* --- JavaFX Overrides --- */
+    -fx-background-color: -app-bg-main;
+    -fx-base:             -app-bg-main;
+    -fx-accent:           -app-accent;
+    -fx-default-button:   -app-accent;
+
+    /* --- Global Typography (Latent tokens: --font-sans, --text-body) --- */
+    -fx-font-family: "Inter", "Segoe UI", Arial, sans-serif;
+    -fx-font-size:   14px;
+}
+
+/* 2. LAYOUT CONTAINERS */
+
+.content-view {
+    -fx-background-color: -app-bg-card;
+    -fx-background:       -app-bg-card;
+}
+
+.content-title {
+    -fx-text-fill:   -app-accent;
+    -fx-font-weight: bold;
+    -fx-font-size:   1.5em;
+    -fx-padding:     0 0 10 0;
+}
+
+.app-title {
+    -fx-text-fill:   -app-text-primary;
+    -fx-font-weight: bold;
+    -fx-font-size:   1.1em;
+}
+
+/* 3. WINDOW CHROME (Latent --titlebar-height: 52px) */
+
+.custom-title-bar {
+    -fx-background-color: -app-bg-secondary;
+    -fx-alignment:        center-left;
+    -fx-padding:          0 2 0 0;
+    -fx-border-color:     -app-border-subtle;
+    -fx-border-width:     0 0 1 0;
+}
+
+.title-label {
+    -fx-text-fill:   -app-text-primary;
+    -fx-font-weight: 600;
+    -fx-font-size:   13px;
+    -fx-padding:     0 0 0 15;
+}
+
+.window-button {
+    -fx-background-color: transparent;
+    -fx-text-fill:        -app-text-muted;
+    -fx-border-color:     transparent;
+    -fx-padding:          10 15;
+    -fx-background-radius: 0;
+    -fx-background-insets: 0;
+    -fx-focus-traversable: false;
+}
+
+.window-button:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.1);
+    -fx-text-fill:        -app-text-primary;
+}
+
+.button.window-close:hover {
+    -fx-background-color: -app-warning-red;
+    -fx-text-fill:        white;
+}
+
+/* 5. GENERIC CONTROLS (Latent Button.jsx "secondary" variant look) */
+
+.button {
+    -fx-background-color: -app-bg-card-raised;
+    -fx-text-fill:        -app-text-primary;
+    -fx-border-color:     -app-border-subtle;
+    -fx-border-radius:    -app-radius-md;
+    -fx-background-radius: -app-radius-md;
+}
+
+.button:hover {
+    -fx-background-color: -app-accent;
+    -fx-text-fill:        #06101A; /* --color-text-on-accent */
+}
+
+.text-area {
+    -fx-control-inner-background: -app-bg-secondary;
+    -fx-text-fill:                -app-text-primary;
+    -fx-border-color:             -app-border-subtle;
+}
+
+.ikonli-font-icon {
+    -fx-fill:       -app-accent;
+    -fx-icon-color: -app-accent;
+}
+
+.button:hover .ikonli-font-icon {
+    -fx-fill:       #06101A;
+    -fx-icon-color: #06101A;
+}
+
+.drop-zone {
+    -fx-background-color: rgba(79, 216, 208, 0.05);
+    -fx-border-color:     rgba(79, 216, 208, 0.4);
+    -fx-border-width:     2;
+    -fx-border-style:     dashed;
+    -fx-border-radius:    -app-radius-lg;
+}
+
+.drop-zone:hover, .drop-zone-active {
+    -fx-border-color:     -app-accent;
+    -fx-background-color: rgba(79, 216, 208, 0.12);
+}
+
+/* 6. DATA DISPLAYS (Latent Card.jsx look: surface-1, subtle border, radius-lg) */
+
+.income-stats-box {
+    -fx-background-color: -app-bg-card;
+    -fx-background-radius: -app-radius-lg;
+    -fx-border-color:     -app-border-subtle;
+    -fx-border-radius:    -app-radius-lg;
+    -fx-border-width:     1;
+    -fx-padding:          15;
+}
+
+.income-stat-value {
+    -fx-text-fill:   -app-accent;
+    -fx-font-size:   1.4em;
+    -fx-font-weight: bold;
+}
+
+.selectable-stat-field {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+    -fx-text-fill: -app-accent;
+    -fx-font-size: 1.4em;
+    -fx-font-weight: bold;
+}
+
+/* 7. DIALOGS & MODALS */
+
+.dialog-pane {
+    -fx-background-color: -app-bg-main;
+    -fx-background-radius: -app-radius-lg;
+    -fx-background-insets: 0;
+    -fx-border-color:  -app-accent;
+    -fx-border-width:  1.5;
+    -fx-border-radius: -app-radius-lg;
+}
+
+.dialog-pane > .container {
+    -fx-background-color:  -app-bg-main;
+}
+
+.dialog-pane:header .header-panel {
+    -fx-background-color:  -app-bg-secondary;
+    -fx-padding:           20;
+}
+
+.dialog-pane:header .header-panel .label {
+    -fx-text-fill:   -app-accent;
+    -fx-font-weight: bold;
+}
+
+.dialog-pane .text-field {
+    -fx-background-color: -app-bg-secondary;
+    -fx-text-fill:        -app-text-primary;
+    -fx-border-color:     -app-border-subtle;
+}
+
+.custom-dialog {
+    -fx-background-color:  -app-bg-secondary;
+    -fx-border-color:      -app-accent;
+    -fx-border-width:      1.5;
+    -fx-border-radius:     -app-radius-lg;
+    -fx-background-insets: 0;
+}
+
+.custom-dialog .text-area {
+    -fx-control-inner-background: -app-bg-secondary;
+    -fx-text-fill:                -app-text-primary;
+    -fx-border-color:             -app-border-subtle;
+    -fx-font-family:              'JetBrains Mono', 'Consolas', 'Monospace';
+}
