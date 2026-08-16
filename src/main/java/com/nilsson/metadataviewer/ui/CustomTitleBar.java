@@ -19,18 +19,25 @@ public class CustomTitleBar extends HBox {
     // Sensitivity for snapping (how close to the edge you must drag)
     private static final double SNAP_THRESHOLD = 20.0;
 
-    public CustomTitleBar(Stage primaryStage, Runnable onExitCleanup) {
+    public CustomTitleBar(Stage primaryStage, Runnable onExitCleanup, Runnable onSettings) {
         this.getStyleClass().add("custom-title-bar");
         this.setAlignment(Pos.CENTER_LEFT);
-        this.setPrefHeight(40);
+        this.setPrefHeight(52);
 
-        Label titleLabel = new Label("Metadata Extractor by ALX v.1.1.0");
+        Label titleLabel = new Label("Metadata Extractor");
         titleLabel.getStyleClass().add("title-label");
 
         HBox spacer = new HBox();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         // --- Window Controls ---
+        Button settingsBtn = new Button();
+        settingsBtn.setGraphic(new FontIcon(FontAwesome.COG));
+        settingsBtn.getStyleClass().add("window-button");
+        settingsBtn.setOnAction(e -> {
+            if (onSettings != null) onSettings.run();
+        });
+
         Button minimizeBtn = new Button();
         minimizeBtn.setGraphic(new FontIcon(FontAwesome.MINUS));
         minimizeBtn.getStyleClass().add("window-button");
@@ -49,7 +56,7 @@ public class CustomTitleBar extends HBox {
             primaryStage.close();
         });
 
-        this.getChildren().addAll(titleLabel, spacer, minimizeBtn, maximizeBtn, closeBtn);
+        this.getChildren().addAll(titleLabel, spacer, settingsBtn, minimizeBtn, maximizeBtn, closeBtn);
 
         // --- Dragging Logic ---
         this.setOnMousePressed(event -> {
