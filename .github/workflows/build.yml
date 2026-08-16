@@ -88,20 +88,39 @@ jobs:
             --jlink-options "--strip-debug --no-header-files --no-man-pages --compress=2" \
             ${{ matrix.icon_args }}
 
+      # jpackage's app-image is always a folder (exe/app/binary + sibling "app"
+      # and "runtime" dirs it needs at launch) — there's no single-file mode.
+      # On Windows that folder-in-a-zip shape trips people up (Explorer lets you
+      # run the exe straight out of the zip's virtual view without a real
+      # extract, which silently fails since the sibling folders don't come
+      # along), so Windows gets wrapped into one genuinely standalone .exe via
+      # Warp instead: it self-extracts the whole app-image to a temp dir at
+      # launch and runs it from there. Linux/macOS keep the zipped folder —
+      # Warp's runner stubs for those platforms are far less maintained, and
+      # this hasn't been a reported problem there.
+      - name: Pack into single-file exe (Warp)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p release
+          curl -sSL -o warp-packer.exe "https://github.com/dgiagio/warp/releases/download/v0.3.0/windows-x64.warp-packer.exe"
+          ./warp-packer.exe \
+            --arch windows-x64 \
+            --input_dir dist/MetadataViewer \
+            --exec MetadataViewer.exe \
+            --output release/MetadataViewer-windows.exe
+
       - name: Zip app image
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           mkdir -p release
           zip_name="release/MetadataViewer-${{ matrix.asset_suffix }}.zip"
           cd dist
-          if [ "${{ runner.os }}" = "Windows" ]; then
-            powershell -Command "Compress-Archive -Path * -DestinationPath '../$zip_name'"
-          else
-            zip -r "../$zip_name" .
-          fi
+          zip -r "../$zip_name" .
 
       - name: Upload Artifacts
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: release/*.zip
+          files: release/*
