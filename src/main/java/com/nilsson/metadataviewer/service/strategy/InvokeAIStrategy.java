@@ -2,15 +2,38 @@ package com.nilsson.metadataviewer.service.strategy;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.nilsson.metadataviewer.service.MetadataExtractionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
+/**
+ * Metadata extraction strategy for InvokeAI-generated images.
+ * <p>
+ * This strategy parses the structured JSON metadata block used by InvokeAI. It maps
+ * InvokeAI-specific keys (e.g., "model_name", "positive_prompt", "cfg_scale") to the
+ * application's standard metadata schema, ensuring consistency in the UI and search index.
+ * <p>
+ * Key functionalities:
+ * - JSON Schema Mapping: Translates InvokeAI's internal property names to standard fields.
+ * - Model Resolution: Extracts model names from multiple potential keys (name, weights, variant).
+ * - Prompt Extraction: Identifies both positive and negative prompts from the JSON structure.
+ * - Parameter Normalization: Captures CFG scale and sampler/scheduler information.
+ */
 public class InvokeAIStrategy implements MetadataStrategy {
 
+    private static final Logger log = LoggerFactory.getLogger(InvokeAIStrategy.class);
     private static final ObjectMapper mapper = new ObjectMapper();
 
+    @Override
     public Map<String, String> parse(String text) {
+        if (text == null || text.isBlank()) {
+            return new HashMap<>();
+        }
+
         Map<String, String> results = new HashMap<>();
         try {
             JsonNode root = mapper.readTree(text);
@@ -20,42 +43,33 @@ public class InvokeAIStrategy implements MetadataStrategy {
                 extract(field.getKey(), field.getValue(), root, results);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to parse InvokeAI metadata block", e);
+            throw new MetadataExtractionException("System failed to parse InvokeAI generation parameters from JSON block.", e);
         }
         return results;
     }
 
     @Override
     public void extract(String key, JsonNode value, JsonNode parentNode, Map<String, String> results) {
-        if (!value.isTextual()) return;
-        String text = value.asText();
+        try {
+            if (!value.isTextual() && !value.isNumber()) return;
+            String text = value.asText();
 
-        // 1. Model Detection
-        if (key.equals("model_name") || key.equals("model_weights")) {
-            results.put("Model", text);
-        }
-
-        // 2. Prompts
-        else if (key.equals("positive_prompt") || (key.equals("prompt") && !results.containsKey("Prompt"))) {
-            results.put("Prompt", text);
-        }
-        else if (key.equals("negative_prompt")) {
-            results.put("Negative", text);
-        }
-
-        // 3. Generation Params
-        else if (key.equals("cfg_scale") || key.equals("cfg_rescale_multiplier")) {
-            results.put("CFG", text);        }
-
-
-        // This prevents overwriting "Sampler (Scheduler)" (from ComfyUI) with just "Sampler".
-        else if ((key.equals("sampler_name") || key.equals("scheduler")) && !results.containsKey("Sampler")) {
-            results.put("Sampler", text);
-        }
-
-        // 4. Variant Support
-        else if (key.equals("variant") && !results.containsKey("Model")) {
-            results.put("Model", text);
+            if (key.equals("model_name") || key.equals("model_weights")) {
+                results.put("Model", text);
+            } else if (key.equals("positive_prompt") || (key.equals("prompt") && !results.containsKey("Prompt"))) {
+                results.put("Prompt", text);
+            } else if (key.equals("negative_prompt")) {
+                results.put("Negative", text);
+            } else if (key.equals("cfg_scale") || key.equals("cfg_rescale_multiplier")) {
+                results.put("CFG", text);
+            } else if ((key.equals("sampler_name") || key.equals("scheduler")) && !results.containsKey("Sampler")) {
+                results.put("Sampler", text);
+            } else if (key.equals("variant") && !results.containsKey("Model")) {
+                results.put("Model", text);
+            }
+        } catch (Exception e) {
+            log.error("Error during InvokeAI JSON extraction for key: {}", key, e);
         }
     }
 }

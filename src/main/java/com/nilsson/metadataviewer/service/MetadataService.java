@@ -7,36 +7,81 @@ import com.drew.metadata.Tag;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.nilsson.metadataviewer.service.parser.TextParamsParser;
 import com.nilsson.metadataviewer.service.strategy.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.text.DecimalFormat;
 import java.util.*;
 
+/**
+ * Service for extracting, parsing, and interpreting technical metadata embedded within AI-generated images.
+ * <p>
+ * This service implements a multi-stage extraction pipeline designed to handle the diverse and
+ * often non-standard ways AI generation tools store metadata. It supports standard EXIF/IPTC
+ * data as well as custom PNG chunks and User Comments used by tools like Automatic1111,
+ * ComfyUI, InvokeAI, NovelAI, and SwarmUI.
+ * <p>
+ * Key Responsibilities:
+ * <ul>
+ *   <li><b>Metadata Discovery:</b> Scans image files for known metadata locations (EXIF, PNG chunks, UserComments)
+ *   and identifies the most relevant data block.</li>
+ *   <li><b>Tool-Specific Parsing:</b> Utilizes a Strategy pattern to correctly interpret metadata from
+ *   different AI software ecosystems (e.g., ComfyUI's graph-based JSON vs. A1111's key-value text).</li>
+ *   <li><b>Physical Attribute Extraction:</b> Retrieves image dimensions and file size using low-level
+ *   ImageIO and MetadataExtractor libraries.</li>
+ *   <li><b>Normalization:</b> Transforms raw, tool-specific parameters into a standardized format
+ *   suitable for database indexing and frontend display.</li>
+ * </ul>
+ */
 public class MetadataService {
+
+    private static final Logger logger = LoggerFactory.getLogger(MetadataService.class);
 
     private final ObjectMapper mapper = new ObjectMapper()
             .configure(JsonParser.Feature.ALLOW_NON_NUMERIC_NUMBERS, true)
             .configure(JsonParser.Feature.ALLOW_COMMENTS, true);
 
-    private final List<MetadataStrategy> jsonStrategies = Arrays.asList(
-            new SwarmUIStrategy(),
-            new ComfyUIStrategy(),
-            new InvokeAIStrategy(),
-            new NovelAIStrategy(),
-            new CommonStrategy()
-    );
+    private final List<MetadataStrategy> jsonStrategies;
+    private final TextParamsParser textParamsParser;
+
+    public MetadataService() {
+        this.jsonStrategies = List.of(
+                new SwarmUIStrategy(),
+                new ComfyUIStrategy(),
+                new InvokeAIStrategy(),
+                new NovelAIStrategy(),
+                new CommonStrategy()
+        );
+        this.textParamsParser = new TextParamsParser();
+    }
+
+    public String getRawMetadata(File file) {
+        return findBestMetadataChunk(file);
+    }
 
     public Map<String, String> getExtractedData(File file) {
+        if (file == null || !file.exists()) {
+            throw new MetadataExtractionException("Image file not found: " + (file != null ? file.getAbsolutePath() : "null"));
+        }
+
         Map<String, String> results = new HashMap<>();
 
-        // 1. Extract physical dimensions (First priority)
         extractPhysicalDimensions(file, results);
-
-        // 2. Find Metadata
+        extractFileSize(file, results);
         String rawData = findBestMetadataChunk(file);
+        results.putAll(processRawMetadata(rawData));
+
+        return results;
+    }
+
+    public Map<String, String> processRawMetadata(String rawData) {
+        Map<String, String> results = new HashMap<>();
 
         if (rawData == null || rawData.isEmpty()) {
             results.put("Prompt", "No metadata found in this image.");
@@ -46,15 +91,14 @@ public class MetadataService {
         results.put("Raw", rawData);
         String trimmed = rawData.trim();
 
-        // 3. Process Data
-        if (trimmed.startsWith("{") || (trimmed.startsWith("\"") && trimmed.contains("\"prompt\""))) {
+        if (trimmed.startsWith("{") ||
+                (trimmed.startsWith("\"") && trimmed.contains("\"prompt\""))) {
             parseJsonMetadata(trimmed, results);
-        }
-        else if (rawData.contains("Steps:") && (rawData.contains("Sampler:") || rawData.contains("Schedule type:"))) {
-            results.putAll(TextParamsParser.parse(rawData));
+        } else if (rawData.contains("Steps:") &&
+                (rawData.contains("Sampler:") || rawData.contains("Schedule type:"))) {
+            results.putAll(textParamsParser.parse(rawData));
             results.put("Software", "A1111 / Forge");
-        }
-        else {
+        } else {
             results.put("Prompt", rawData);
             results.put("Software", "Unknown");
         }
@@ -62,11 +106,25 @@ public class MetadataService {
         return results;
     }
 
+    private void extractFileSize(File file, Map<String, String> results) {
+        if (file == null || !file.exists()) return;
+        long bytes = file.length();
+        String sizeStr;
+        if (bytes < 1024) {
+            sizeStr = bytes + " B";
+        } else if (bytes < 1024 * 1024) {
+            sizeStr = new DecimalFormat("#.##").format(bytes / 1024.0) + " KB";
+        } else {
+            sizeStr = new DecimalFormat("#.##").format(bytes / (1024.0 * 1024.0)) + " MB";
+        }
+        results.put("FileSize", sizeStr);
+    }
+
     private void extractPhysicalDimensions(File file, Map<String, String> results) {
+        if (file == null || !file.exists()) return;
         int width = 0;
         int height = 0;
 
-        // METHOD 1: Fast Metadata Reading
         try {
             Metadata metadata = ImageMetadataReader.readMetadata(file);
             for (Directory directory : metadata.getDirectories()) {
@@ -74,7 +132,6 @@ public class MetadataService {
                     String name = tag.getTagName().toLowerCase();
                     String desc = tag.getDescription();
                     if (desc == null || desc.isEmpty()) continue;
-
                     if (name.contains("thumbnail") || name.contains("resolution")) continue;
 
                     String valStr = desc.split(" ")[0];
@@ -87,25 +144,40 @@ public class MetadataService {
                     if (name.contains("height") && val > height) height = val;
                 }
             }
-        } catch (Exception ignored) {}
-
-        // METHOD 2: Fallback to ImageIO
-        if (width == 0 || height == 0) {
-            try {
-                BufferedImage bimg = ImageIO.read(file);
-                if (bimg != null) {
-                    width = bimg.getWidth();
-                    height = bimg.getHeight();
-                }
-            } catch (Exception ignored) { }
+        } catch (Exception e) {
+            logger.debug("Failed to read metadata using ImageMetadataReader for {}: {}", file.getName(), e.getMessage());
         }
 
-        if (width > 0) results.put("Width", String.valueOf(width));
-        if (height > 0) results.put("Height", String.valueOf(height));
+        try (ImageInputStream in = ImageIO.createImageInputStream(file)) {
+            if (in != null) {
+                Iterator<ImageReader> readers = ImageIO.getImageReaders(in);
+                if (readers.hasNext()) {
+                    ImageReader reader = readers.next();
+                    try {
+                        reader.setInput(in);
+                        width = reader.getWidth(0);
+                        height = reader.getHeight(0);
+                    } finally {
+                        reader.dispose();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            logger.debug("Failed to read dimensions using ImageIO for {}: {}", file.getName(), e.getMessage());
+        }
+
+        if (width > 0 && height > 0) {
+            results.put("Resolution", width + "x" + height);
+        }
     }
 
     private String findBestMetadataChunk(File file) {
+        if (file == null || !file.exists()) {
+            return null;
+        }
+
         List<String> candidates = new ArrayList<>();
+
         try {
             Metadata metadata = ImageMetadataReader.readMetadata(file);
             for (Directory directory : metadata.getDirectories()) {
@@ -113,12 +185,13 @@ public class MetadataService {
                     String desc = tag.getDescription();
                     if (desc == null) continue;
 
-                    if (tag.getTagName().toLowerCase().contains("parameters") ||
-                            tag.getTagName().toLowerCase().contains("user comment") ||
+                    String tagName = tag.getTagName().toLowerCase();
+
+                    if (tagName.contains("parameters") ||
+                            tagName.contains("user comment") ||
                             desc.contains("Steps:")) {
                         candidates.add(desc);
-                    }
-                    else if (desc.contains("{")) {
+                    } else if (desc.contains("{")) {
                         int braceIndex = desc.indexOf("{");
                         if (braceIndex != -1) {
                             candidates.add(desc.substring(braceIndex).trim());
@@ -127,7 +200,7 @@ public class MetadataService {
                 }
             }
         } catch (Exception e) {
-            return null;
+            logger.debug("Failed to extract metadata chunks for {}: {}", file.getName(), e.getMessage());
         }
 
         String bestChunk = null;
@@ -140,6 +213,7 @@ public class MetadataService {
                 bestChunk = chunk;
             }
         }
+
         return bestChunk;
     }
 
@@ -155,12 +229,16 @@ public class MetadataService {
     private void parseJsonMetadata(String json, Map<String, String> results) {
         try {
             String cleanJson = json;
+
             int lastBrace = cleanJson.lastIndexOf("}");
             if (lastBrace != -1 && lastBrace < cleanJson.length() - 1) {
                 cleanJson = cleanJson.substring(0, lastBrace + 1);
             }
+
             if (cleanJson.startsWith("\"")) {
-                cleanJson = cleanJson.substring(1, cleanJson.length() - 1).replace("\\\"", "\"");
+                cleanJson = cleanJson
+                        .substring(1, cleanJson.length() - 1)
+                        .replace("\\\"", "\"");
             }
 
             JsonNode root = mapper.readTree(cleanJson);
@@ -170,25 +248,39 @@ public class MetadataService {
             else if (root.has("meta") && root.get("meta").has("invokeai_metadata")) software = "InvokeAI";
             else if (root.has("uc")) software = "NovelAI";
             else {
-                Iterator<String> keys = root.fieldNames();
-                if (keys.hasNext()) {
-                    String firstKey = keys.next();
-                    if (firstKey.matches("\\d+") && root.get(firstKey).has("class_type")) {
-                        software = "ComfyUI";
-                    } else if (root.has("nodes") && root.has("links")) {
-                        software = "ComfyUI (Workflow)";
+                if (root.has("prompt") && root.get("prompt").isObject()) {
+                    JsonNode promptNode = root.get("prompt");
+                    Iterator<String> promptKeys = promptNode.fieldNames();
+                    if (promptKeys.hasNext()) {
+                        String firstPk = promptKeys.next();
+                        if (firstPk.matches("\\d+") && promptNode.get(firstPk).has("class_type")) {
+                            software = "ComfyUI";
+                        }
+                    }
+                }
+
+                if ("Unknown".equals(software)) {
+                    Iterator<String> keys = root.fieldNames();
+                    if (keys.hasNext()) {
+                        String firstKey = keys.next();
+                        if (firstKey.matches("\\d+") && root.get(firstKey).has("class_type")) {
+                            software = "ComfyUI";
+                        } else if (root.has("nodes") && root.has("links")) {
+                            software = "ComfyUI (Workflow)";
+                        }
                     }
                 }
             }
+
             results.put("Software", software);
 
-            // Pass software type to restrict strategies
             findKeysRecursively(root, results, software);
 
             if (!results.containsKey("Prompt") || results.get("Prompt").isEmpty()) {
                 results.put("Prompt", findLongestText(root));
             }
         } catch (Exception e) {
+            logger.warn("JSON parsing error for provided metadata: {}", e.getMessage());
             results.put("Prompt", "Error parsing JSON: " + e.getMessage());
         }
     }
@@ -200,17 +292,20 @@ public class MetadataService {
                 Map.Entry<String, JsonNode> entry = fields.next();
 
                 for (MetadataStrategy strategy : jsonStrategies) {
-                    // FIX: If ComfyUI is detected, ONLY allow ComfyUIStrategy to run.
-                    // This prevents CommonStrategy from scraping garbage from widgets.
                     if (software.contains("ComfyUI") && !(strategy instanceof ComfyUIStrategy)) {
                         continue;
                     }
-                    strategy.extract(entry.getKey().toLowerCase(), entry.getValue(), node, results);
+                    strategy.extract(
+                            entry.getKey().toLowerCase(),
+                            entry.getValue(),
+                            node,
+                            results
+                    );
                 }
 
                 findKeysRecursively(entry.getValue(), results, software);
             }
-        } else if (node.isArray()) {
+        } else if (!node.isObject() && node.isArray()) {
             for (JsonNode child : node) {
                 findKeysRecursively(child, results, software);
             }
@@ -228,9 +323,9 @@ public class MetadataService {
         return longest[0];
     }
 
-    public static javafx.scene.image.Image loadFxImage(java.io.File file) {
+    public static javafx.scene.image.Image loadFxImage(File file) {
         try {
-            java.awt.image.BufferedImage bImg = javax.imageio.ImageIO.read(file);
+            BufferedImage bImg = ImageIO.read(file);
             if (bImg != null) {
                 return javafx.embed.swing.SwingFXUtils.toFXImage(bImg, null);
             }

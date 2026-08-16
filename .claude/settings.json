@@ -1,0 +1,21 @@
+{
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(mvn compile:*)",
+      "Bash(mvn package:*)",
+      "Bash(mvn verify:*)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./**/application-prod.yml)",
+      "Read(./**/application-prod.properties)",
+      "Read(./**/secrets/**)"
+    ]
+  }
+}

@@ -38,3 +38,7 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+### AI assistant setup ###
+.claude/skills/
+drop-in-brain-main/

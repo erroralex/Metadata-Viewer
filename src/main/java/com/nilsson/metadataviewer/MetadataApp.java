@@ -2,7 +2,8 @@ package com.nilsson.metadataviewer;
 
 import com.nilsson.metadataviewer.ui.CustomTitleBar;
 import com.nilsson.metadataviewer.ui.ResizeHelper;
-import com.nilsson.metadataviewer.ui.RootLayout;
+import com.nilsson.metadataviewer.ui.views.ExtractorView;
+import com.nilsson.metadataviewer.ui.views.SettingsDialog;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.geometry.Rectangle2D;
@@ -25,12 +26,16 @@ public class MetadataApp extends Application {
         try {
             primaryStage.initStyle(StageStyle.UNDECORATED);
 
-            CustomTitleBar titleBar = new CustomTitleBar(primaryStage, () -> System.exit(0));
-            RootLayout rootLayout = new RootLayout(primaryStage, titleBar);
+            ExtractorView extractorView = new ExtractorView();
+            CustomTitleBar titleBar = new CustomTitleBar(
+                    primaryStage,
+                    () -> System.exit(0),
+                    () -> SettingsDialog.show(primaryStage)
+            );
 
             BorderPane mainWrapper = new BorderPane();
             mainWrapper.setTop(titleBar);
-            mainWrapper.setCenter(rootLayout);
+            mainWrapper.setCenter(extractorView);
 
             Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
             double appWidth = Math.min(TARGET_WIDTH, screenBounds.getWidth() * 0.90);
@@ -38,8 +43,8 @@ public class MetadataApp extends Application {
 
             Scene scene = new Scene(mainWrapper, appWidth, appHeight);
 
-            String cssPath = getClass().getResource("/dark-theme.css") != null
-                    ? getClass().getResource("/dark-theme.css").toExternalForm()
+            String cssPath = getClass().getResource("/latent-theme.css") != null
+                    ? getClass().getResource("/latent-theme.css").toExternalForm()
                     : "";
             if (!cssPath.isEmpty()) {
                 scene.getStylesheets().add(cssPath);
@@ -71,7 +76,7 @@ public class MetadataApp extends Application {
                         lowerName.endsWith(".webp"))) {
 
                     // Run on UI thread to be safe
-                    Platform.runLater(() -> rootLayout.openInitialFile(file));
+                    Platform.runLater(() -> extractorView.process(file));
                 }
             }
 
