@@ -40,14 +40,9 @@ A high-performance JavaFX desktop application designed to inspect and extract ge
 
 ## 🚀 Getting Started
 
-### Prerequisites
-* Java 21+
+Grab the latest standalone build for your OS from the [Releases](https://github.com/erroralex/Metadata-Viewer/releases) page — no Java installation required, just unzip and run.
 
-### Build & Run
-```bash
-mvn clean package
-java -jar target/MetadataViewer-1.1.0-SNAPSHOT.jar
-```
+Building from source instead? See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 

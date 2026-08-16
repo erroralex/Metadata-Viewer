@@ -17,10 +17,13 @@ jobs:
         include:
           - os: windows-latest
             asset_suffix: windows
+            icon_args: --icon src/main/resources/icon.ico
           - os: ubuntu-latest
             asset_suffix: linux
+            icon_args: --icon src/main/resources/icon.png
           - os: macos-latest
             asset_suffix: macos
+            icon_args: '' # no .icns bundled yet, ships with the default jpackage icon
 
     steps:
       - name: Checkout Code
@@ -33,21 +36,72 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
 
+      - name: Read project version
+        id: version
+        shell: bash
+        run: |
+          version=$(mvn --batch-mode help:evaluate -Dexpression=project.version -q -DforceStdout)
+          echo "app_version=${version%-SNAPSHOT}" >> "$GITHUB_OUTPUT"
+
       # javafx.platform is resolved automatically per-OS by the Maven profiles in
       # pom.xml, so each runner produces a jar bundling the correct native JavaFX
       # graphics library for its own platform.
-      - name: Build (Maven)
+      - name: Build shaded jar (Maven)
         run: mvn --batch-mode clean package -DskipTests
 
-      - name: Rename Artifact
+      - name: Stage jar for jpackage
+        shell: bash
+        run: |
+          mkdir -p staging
+          jar_file=$(find target -maxdepth 1 -name 'MetadataViewer-*.jar' ! -name '*sources*' ! -name '*javadoc*')
+          cp "$jar_file" staging/
+          echo "main_jar=$(basename "$jar_file")" >> "$GITHUB_ENV"
+
+      # Compute the minimal set of JDK platform modules the shaded jar actually
+      # touches (JavaFX itself is bundled as plain classes by the shade plugin,
+      # not a separate module, so this stays small — no need for the "java.se"
+      # umbrella module) so the bundled runtime is as lightweight as possible.
+      - name: Compute minimal module set (jdeps)
+        shell: bash
+        run: |
+          modules=$(jdeps --multi-release 21 --ignore-missing-deps --print-module-deps --recursive "staging/$main_jar")
+          echo "Detected modules: $modules"
+          echo "modules=$modules" >> "$GITHUB_ENV"
+
+      # Bundles a trimmed-down custom JRE (via jlink under the hood), so end
+      # users don't need Java installed — produces a standalone
+      # MetadataViewer.exe / .app / native binary, matching the local packaging
+      # convention in "Package CMD.md" but sized to only what's actually used.
+      - name: Package standalone app (jpackage)
+        shell: bash
+        run: |
+          jpackage \
+            --input staging \
+            --dest dist \
+            --name MetadataViewer \
+            --main-jar "$main_jar" \
+            --main-class com.nilsson.metadataviewer.Launcher \
+            --type app-image \
+            --app-version "${{ steps.version.outputs.app_version }}" \
+            --vendor "Alexander Nilsson" \
+            --add-modules "$modules" \
+            --jlink-options "--strip-debug --no-header-files --no-man-pages --compress=2" \
+            ${{ matrix.icon_args }}
+
+      - name: Zip app image
         shell: bash
         run: |
           mkdir -p release
-          jar_file=$(find target -maxdepth 1 -name 'MetadataViewer-*.jar' ! -name '*sources*' ! -name '*javadoc*')
-          cp "$jar_file" "release/MetadataViewer-${{ matrix.asset_suffix }}.jar"
+          zip_name="release/MetadataViewer-${{ matrix.asset_suffix }}.zip"
+          cd dist
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            powershell -Command "Compress-Archive -Path * -DestinationPath '../$zip_name'"
+          else
+            zip -r "../$zip_name" .
+          fi
 
       - name: Upload Artifacts
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: release/*.jar
+          files: release/*.zip
