@@ -1,6 +1,9 @@
 package com.nilsson.metadataviewer.ui.views;
 
 import com.nilsson.metadataviewer.service.MetadataService;
+import javafx.animation.FadeTransition;
+import javafx.animation.PauseTransition;
+import javafx.animation.SequentialTransition;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -19,6 +22,10 @@ import javafx.stage.StageStyle;
 import javafx.stage.Window;
 import org.kordamp.ikonli.fontawesome.FontAwesome;
 import org.kordamp.ikonli.javafx.FontIcon;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
+import javafx.util.Duration;
 
 import java.io.File;
 import java.util.Map;
@@ -41,12 +48,13 @@ public class ExtractorView extends ScrollPane {
     private final TextField sizeVal = createSelectableField("-");
     private final TextField denoiseVal = createSelectableField("-");
     private final TextField hiresFixVal = createSelectableField("-");
-    private final TextField modelHashVal = createSelectableField("-");
     private final TextArea lorasVal = new TextArea("-");
-    private final TextArea controlNetVal = new TextArea("-");
 
     private final ImageView previewImageView = new ImageView();
-    private final StackPane previewContainer = new StackPane();
+    private final StackPane imageArea = new StackPane();
+    private final VBox dropHint = new VBox(10);
+    private final Label fullScreenHint = new Label("Click to Fullscreen");
+    private final Label toast = new Label();
 
     private Map<String, String> lastData;
     private File lastFile;
@@ -69,17 +77,13 @@ public class ExtractorView extends ScrollPane {
         imageColumn.setPrefWidth(360);
         imageColumn.setMinWidth(280);
 
-        VBox dropZone = createDropZone();
+        setupImageArea();
 
-        setupPreviewContainer();
-        previewContainer.setPrefSize(320, 320);
-        previewImageView.setFitWidth(300);
-        previewImageView.setFitHeight(300);
-
-        Label fullScreenHint = new Label("Click to Fullscreen");
         fullScreenHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -app-text-muted;");
+        fullScreenHint.setVisible(false);
+        fullScreenHint.setManaged(false);
 
-        imageColumn.getChildren().addAll(dropZone, previewContainer, fullScreenHint, createRawButton());
+        imageColumn.getChildren().addAll(imageArea, fullScreenHint, createRawButton());
 
         // --- Right: metadata panel ---
         VBox metadataPanel = new VBox(15);
@@ -105,9 +109,9 @@ public class ExtractorView extends ScrollPane {
         VBox seedCard = createStatCard("Seed", seedVal, FontAwesome.KEY);
         VBox samplerCard = createStatCard("Sampler", samplerVal, FontAwesome.SLIDERS);
         VBox schedulerCard = createStatCard("Scheduler", schedulerVal, FontAwesome.CLOCK_O);
-        stepsCard.setPrefWidth(80);
-        cfgCard.setPrefWidth(80);
-        seedCard.setPrefWidth(180);
+        stepsCard.setMinWidth(Region.USE_PREF_SIZE);
+        cfgCard.setMinWidth(Region.USE_PREF_SIZE);
+        seedCard.setMinWidth(Region.USE_PREF_SIZE);
         HBox.setHgrow(seedCard, Priority.NEVER);
         HBox.setHgrow(samplerCard, Priority.ALWAYS);
         HBox.setHgrow(schedulerCard, Priority.ALWAYS);
@@ -116,12 +120,10 @@ public class ExtractorView extends ScrollPane {
         VBox sizeCard = createStatCard("Size", sizeVal, FontAwesome.IMAGE);
         VBox denoiseCard = createStatCard("Denoise", denoiseVal, FontAwesome.TINT);
         VBox hiresCard = createStatCard("Hires. fix", hiresFixVal, FontAwesome.EXPAND);
-        VBox modelHashCard = createStatCard("Model Hash", modelHashVal, FontAwesome.HASHTAG);
-        HBox row3 = new HBox(12, sizeCard, denoiseCard, hiresCard, modelHashCard);
+        HBox row3 = new HBox(12, sizeCard, denoiseCard, hiresCard);
         HBox.setHgrow(sizeCard, Priority.ALWAYS);
         HBox.setHgrow(denoiseCard, Priority.ALWAYS);
         HBox.setHgrow(hiresCard, Priority.ALWAYS);
-        HBox.setHgrow(modelHashCard, Priority.ALWAYS);
 
         lorasVal.setEditable(false);
         lorasVal.setWrapText(true);
@@ -129,16 +131,9 @@ public class ExtractorView extends ScrollPane {
         lorasVal.getStyleClass().add("text-area");
         lorasVal.setStyle("-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0;");
 
-        controlNetVal.setEditable(false);
-        controlNetVal.setWrapText(true);
-        controlNetVal.setPrefHeight(50);
-        controlNetVal.getStyleClass().add("text-area");
-        controlNetVal.setStyle("-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0;");
-
         statsWrapper.getChildren().addAll(
                 row1, row2, row3,
-                createStatCard("Loras Used", lorasVal, FontAwesome.PUZZLE_PIECE),
-                createStatCard("ControlNet", controlNetVal, FontAwesome.SITEMAP)
+                createStatCard("Loras Used", lorasVal, FontAwesome.PUZZLE_PIECE)
         );
 
         metadataPanel.getChildren().addAll(promptsWrapper, statsWrapper);
@@ -149,25 +144,91 @@ public class ExtractorView extends ScrollPane {
         title.getStyleClass().add("content-title");
 
         container.getChildren().addAll(title, mainSplit);
-        this.setContent(container);
+
+        StackPane root = new StackPane(container);
+        toast.getStyleClass().add("toast");
+        toast.setVisible(false);
+        toast.setMouseTransparent(true);
+        StackPane.setAlignment(toast, Pos.BOTTOM_CENTER);
+        StackPane.setMargin(toast, new Insets(0, 0, 24, 0));
+        root.getChildren().add(toast);
+
+        this.setContent(root);
     }
 
-    private void setupPreviewContainer() {
-        previewContainer.getStyleClass().add("income-stats-box");
-        previewContainer.setPrefSize(160, 160);
+    /**
+     * Steps/CFG/Seed cards are kept compact by default, but CFG in particular can
+     * carry longer text (e.g. "1 (distilled 3.5)") — size the field to whatever
+     * text it actually holds instead of clipping it behind a fixed width.
+     */
+    private static final Font STAT_VALUE_FONT = Font.font(null, FontWeight.BOLD, 19.6);
 
-        previewImageView.setFitWidth(140);
-        previewImageView.setFitHeight(140);
+    private static void autoSizeStatField(TextField field, double minWidth) {
+        Text measure = new Text(field.getText());
+        measure.setFont(STAT_VALUE_FONT);
+        double width = measure.getLayoutBounds().getWidth() + 24;
+        field.setPrefWidth(Math.max(minWidth, width));
+    }
+
+    private static void flashToast(Label toastLabel, String message) {
+        toastLabel.setText(message);
+        toastLabel.setOpacity(0);
+        toastLabel.setVisible(true);
+
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(150), toastLabel);
+        fadeIn.setToValue(1);
+        PauseTransition hold = new PauseTransition(Duration.millis(1400));
+        FadeTransition fadeOut = new FadeTransition(Duration.millis(300), toastLabel);
+        fadeOut.setToValue(0);
+        fadeOut.setOnFinished(e -> toastLabel.setVisible(false));
+
+        new SequentialTransition(fadeIn, hold, fadeOut).play();
+    }
+
+    private void setupImageArea() {
+        imageArea.getStyleClass().add("drop-zone");
+        imageArea.setPrefSize(320, 320);
+        imageArea.setCursor(javafx.scene.Cursor.HAND);
+        imageArea.setFocusTraversable(false);
+
+        FontIcon icon = new FontIcon(FontAwesome.CLOUD_UPLOAD);
+        icon.setIconSize(32);
+        Label dropLabel = new Label("Drop Image Here");
+        dropLabel.setStyle("-fx-text-fill: -app-text-muted; -fx-font-size: 14px;");
+        dropHint.setAlignment(Pos.CENTER);
+        dropHint.getChildren().addAll(icon, dropLabel);
+
+        previewImageView.setFitWidth(300);
+        previewImageView.setFitHeight(300);
         previewImageView.setPreserveRatio(true);
         previewImageView.setSmooth(true);
+        previewImageView.setVisible(false);
+        previewImageView.setManaged(false);
 
-        previewContainer.getChildren().add(previewImageView);
-        previewContainer.setCursor(javafx.scene.Cursor.HAND);
+        imageArea.getChildren().addAll(dropHint, previewImageView);
 
-        previewContainer.setOnMouseClicked(e -> {
+        imageArea.setOnMouseClicked(e -> {
             if (lastFile != null && lastFile.exists()) {
                 showFullScreenImage(lastFile);
             }
+        });
+
+        imageArea.setOnDragOver(e -> {
+            if (e.getDragboard().hasFiles()) {
+                e.acceptTransferModes(javafx.scene.input.TransferMode.COPY);
+                imageArea.getStyleClass().add("drop-zone-active");
+            }
+            e.consume();
+        });
+        imageArea.setOnDragExited(e -> imageArea.getStyleClass().remove("drop-zone-active"));
+
+        imageArea.setOnDragDropped(e -> {
+            if (e.getDragboard().hasFiles()) {
+                process(e.getDragboard().getFiles().get(0));
+                e.setDropCompleted(true);
+            }
+            imageArea.getStyleClass().remove("drop-zone-active");
+            e.consume();
         });
     }
 
@@ -205,6 +266,17 @@ public class ExtractorView extends ScrollPane {
 
     private void loadImageSafe(File f) {
         loadImageIntoView(f, previewImageView, true);
+
+        boolean hasImage = previewImageView.getImage() != null;
+        dropHint.setVisible(!hasImage);
+        dropHint.setManaged(!hasImage);
+        previewImageView.setVisible(hasImage);
+        previewImageView.setManaged(hasImage);
+        fullScreenHint.setVisible(hasImage);
+        fullScreenHint.setManaged(hasImage);
+
+        imageArea.getStyleClass().removeAll("drop-zone", "image-frame");
+        imageArea.getStyleClass().add(hasImage ? "image-frame" : "drop-zone");
     }
 
     private void loadImageIntoView(File f, ImageView view, boolean small) {
@@ -226,7 +298,7 @@ public class ExtractorView extends ScrollPane {
         btnRaw.setOnAction(e -> {
             if (lastData == null || !lastData.containsKey("Raw")) return;
             Dialog<ButtonType> dialog = new Dialog<>();
-            dialog.initStyle(StageStyle.UNDECORATED);
+            dialog.initStyle(StageStyle.TRANSPARENT);
             DialogPane pane = dialog.getDialogPane();
             pane.getStyleClass().add("custom-dialog");
             if (this.getScene() != null) pane.getStylesheets().addAll(this.getScene().getStylesheets());
@@ -236,13 +308,39 @@ public class ExtractorView extends ScrollPane {
             rawArea.setWrapText(true);
             rawArea.getStyleClass().add("text-area");
 
+            Label dialogToast = new Label();
+            dialogToast.getStyleClass().add("toast");
+            dialogToast.setVisible(false);
+            dialogToast.setMouseTransparent(true);
+
+            Button copyRawBtn = new Button("Copy Raw");
+            copyRawBtn.setGraphic(new FontIcon(FontAwesome.COPY));
+            copyRawBtn.getStyleClass().add("button");
+            copyRawBtn.setOnAction(ev -> {
+                Clipboard clipboard = Clipboard.getSystemClipboard();
+                ClipboardContent clipContent = new ClipboardContent();
+                clipContent.putString(rawArea.getText());
+                clipboard.setContent(clipContent);
+                flashToast(dialogToast, "Raw metadata copied to clipboard");
+            });
+
             Button closeBtn = new Button("Close Viewer");
+            closeBtn.getStyleClass().add("button");
             closeBtn.setOnAction(ev -> dialog.setResult(ButtonType.CLOSE));
 
-            VBox content = new VBox(10, new Label("Raw Image Metadata"), rawArea, closeBtn);
+            HBox actions = new HBox(10, copyRawBtn, closeBtn);
+            actions.setAlignment(Pos.CENTER_RIGHT);
+
+            VBox content = new VBox(10, new Label("Raw Image Metadata"), rawArea, actions);
             content.setPadding(new Insets(20));
-            pane.setContent(content);
+
+            StackPane dialogRoot = new StackPane(content, dialogToast);
+            StackPane.setAlignment(dialogToast, Pos.BOTTOM_CENTER);
+            StackPane.setMargin(dialogToast, new Insets(0, 0, 16, 0));
+            pane.setContent(dialogRoot);
+
             setupDialogDragging(pane);
+            dialog.setOnShowing(ev -> pane.getScene().setFill(Color.TRANSPARENT));
             dialog.showAndWait();
         });
         return btnRaw;
@@ -282,6 +380,7 @@ public class ExtractorView extends ScrollPane {
             ClipboardContent content = new ClipboardContent();
             content.putString(area.getText());
             clipboard.setContent(content);
+            flashToast(toast, title + " copied to clipboard");
         });
 
         header.getChildren().addAll(label, copyBtn);
@@ -291,41 +390,6 @@ public class ExtractorView extends ScrollPane {
 
         section.getChildren().addAll(header, area);
         return section;
-    }
-
-    private VBox createDropZone() {
-        VBox dz = new VBox(10);
-        dz.getStyleClass().add("drop-zone");
-        dz.setMinHeight(160);
-        dz.setAlignment(Pos.CENTER);
-
-        Label dropLabel = new Label("Drop Image Here");
-        // Inline style ONLY for text color to reference CSS variable safely
-        dropLabel.setStyle("-fx-text-fill: -app-text-muted; -fx-font-size: 14px;");
-
-        FontIcon icon = new FontIcon(FontAwesome.CLOUD_UPLOAD);
-        icon.setIconSize(32);
-
-        dz.getChildren().addAll(icon, dropLabel);
-
-        dz.setOnDragOver(e -> {
-            if (e.getDragboard().hasFiles()) {
-                e.acceptTransferModes(javafx.scene.input.TransferMode.COPY);
-                dz.getStyleClass().add("drop-zone-active");
-            }
-            e.consume();
-        });
-        dz.setOnDragExited(e -> dz.getStyleClass().remove("drop-zone-active"));
-
-        dz.setOnDragDropped(e -> {
-            if (e.getDragboard().hasFiles()) {
-                process(e.getDragboard().getFiles().get(0));
-                e.setDropCompleted(true);
-            }
-            dz.getStyleClass().remove("drop-zone-active");
-            e.consume();
-        });
-        return dz;
     }
 
     private TextField createSelectableField(String text) {
@@ -347,7 +411,8 @@ public class ExtractorView extends ScrollPane {
         FontIcon fi = new FontIcon(icon);
 
         Label titleLbl = new Label(title);
-        titleLbl.setStyle("-fx-text-fill: -app-text-muted; -fx-font-size: 0.9em;");
+        titleLbl.getStyleClass().add("stat-label");
+        titleLbl.setMinWidth(Region.USE_PREF_SIZE);
 
         header.getChildren().addAll(fi, titleLbl);
         card.getChildren().addAll(header, valField);
@@ -382,12 +447,13 @@ public class ExtractorView extends ScrollPane {
             stepsVal.setText(lastData.getOrDefault("Steps", "N/A"));
             cfgVal.setText(lastData.getOrDefault("CFG", "N/A"));
             seedVal.setText(lastData.getOrDefault("Seed", "N/A"));
+            autoSizeStatField(stepsVal, 50);
+            autoSizeStatField(cfgVal, 50);
+            autoSizeStatField(seedVal, 90);
             sizeVal.setText(lastData.getOrDefault("Resolution", "N/A"));
             denoiseVal.setText(lastData.getOrDefault("Denoise", "N/A"));
             hiresFixVal.setText(lastData.getOrDefault("Hires. fix", "Disabled"));
-            modelHashVal.setText(lastData.getOrDefault("Model Hash", "N/A"));
             lorasVal.setText(lastData.getOrDefault("Loras", "None"));
-            controlNetVal.setText(lastData.getOrDefault("ControlNet", "None"));
 
             loadImageSafe(f);
 

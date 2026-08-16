@@ -1,5 +1,6 @@
 package com.nilsson.metadataviewer.ui;
 
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.control.Button;
@@ -7,6 +8,12 @@ import javafx.scene.control.Label;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.SVGPath;
+import javafx.scene.shape.StrokeLineCap;
+import javafx.scene.shape.StrokeLineJoin;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import org.kordamp.ikonli.fontawesome.FontAwesome;
@@ -24,6 +31,9 @@ public class CustomTitleBar extends HBox {
         this.setAlignment(Pos.CENTER_LEFT);
         this.setPrefHeight(52);
 
+        StackPane titleMark = createBrandMark();
+        HBox.setMargin(titleMark, new Insets(0, 0, 0, 15));
+
         Label titleLabel = new Label("Metadata Extractor");
         titleLabel.getStyleClass().add("title-label");
 
@@ -40,7 +50,7 @@ public class CustomTitleBar extends HBox {
 
         Button minimizeBtn = new Button();
         minimizeBtn.setGraphic(new FontIcon(FontAwesome.MINUS));
-        minimizeBtn.getStyleClass().add("window-button");
+        minimizeBtn.getStyleClass().addAll("window-button", "window-minimize");
         minimizeBtn.setOnAction(e -> primaryStage.setIconified(true));
 
         Button maximizeBtn = new Button();
@@ -56,7 +66,10 @@ public class CustomTitleBar extends HBox {
             primaryStage.close();
         });
 
-        this.getChildren().addAll(titleLabel, spacer, settingsBtn, minimizeBtn, maximizeBtn, closeBtn);
+        HBox windowControls = new HBox(6, settingsBtn, minimizeBtn, maximizeBtn, closeBtn);
+        windowControls.setAlignment(Pos.CENTER_RIGHT);
+
+        this.getChildren().addAll(titleMark, titleLabel, spacer, windowControls);
 
         // --- Dragging Logic ---
         this.setOnMousePressed(event -> {
@@ -105,6 +118,40 @@ public class CustomTitleBar extends HBox {
                 toggleMaximize(primaryStage, maximizeBtn);
             }
         });
+    }
+
+    /**
+     * Adapts Latent Design System's BrandMark.jsx (gradient rounded square,
+     * scaled to a 20px titlebar icon) with an "M" glyph for Metadata Extractor
+     * in place of Latent's own "L".
+     */
+    private StackPane createBrandMark() {
+        Region bg = new Region();
+        bg.getStyleClass().add("title-mark");
+
+        String glyphPath = "M 6.0 14.4 L 6.0 5.6 L 10.0 10.4 L 14.0 5.6 L 14.0 14.4";
+
+        SVGPath shadow = new SVGPath();
+        shadow.setContent(glyphPath);
+        shadow.setFill(null);
+        shadow.setStroke(Color.rgb(6, 16, 26, 0.35));
+        shadow.setStrokeWidth(3.4);
+        shadow.setStrokeLineCap(StrokeLineCap.ROUND);
+        shadow.setStrokeLineJoin(StrokeLineJoin.ROUND);
+
+        SVGPath glyph = new SVGPath();
+        glyph.setContent(glyphPath);
+        glyph.setFill(null);
+        glyph.setStroke(Color.web("#F7F8FB"));
+        glyph.setStrokeWidth(3.0);
+        glyph.setStrokeLineCap(StrokeLineCap.ROUND);
+        glyph.setStrokeLineJoin(StrokeLineJoin.ROUND);
+
+        StackPane mark = new StackPane(bg, shadow, glyph);
+        mark.setMinSize(20, 20);
+        mark.setPrefSize(20, 20);
+        mark.setMaxSize(20, 20);
+        return mark;
     }
 
     /**

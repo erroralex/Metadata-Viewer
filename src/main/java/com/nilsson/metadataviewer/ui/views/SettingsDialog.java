@@ -7,6 +7,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.stage.StageStyle;
 import javafx.stage.Window;
 
@@ -25,7 +26,7 @@ public class SettingsDialog {
     public static void show(Window owner) {
         Dialog<Void> dialog = new Dialog<>();
         dialog.initOwner(owner);
-        dialog.initStyle(StageStyle.UNDECORATED);
+        dialog.initStyle(StageStyle.TRANSPARENT);
 
         DialogPane pane = dialog.getDialogPane();
         pane.getStyleClass().add("custom-dialog");
@@ -75,6 +76,7 @@ public class SettingsDialog {
         content.getChildren().addAll(logoView, appName, version, movedNote, links);
         pane.setContent(content);
 
+        dialog.setOnShowing(e -> pane.getScene().setFill(Color.TRANSPARENT));
         dialog.showAndWait();
     }
 

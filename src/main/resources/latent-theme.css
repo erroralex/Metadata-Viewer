@@ -17,6 +17,7 @@
     -app-text-muted:    #9294A3; /* --color-text-secondary / --gray-300 */
     -app-text-tertiary: #6F7180; /* --color-text-tertiary / --gray-400 */
     -app-border-subtle: rgba(255,255,255,0.10); /* --color-border-default */
+    -app-border-strong: rgba(255,255,255,0.18); /* --color-border-strong */
     -app-warning-red:   #F2665B; /* --color-danger */
 
     /* --- JavaFX Overrides --- */
@@ -24,6 +25,11 @@
     -fx-base:             -app-bg-main;
     -fx-accent:           -app-accent;
     -fx-default-button:   -app-accent;
+
+    /* Suppress the default JavaFX focus glow app-wide; controls get their own
+       focus treatment via border-color instead (see .text-area/.text-field below). */
+    -fx-focus-color:       transparent;
+    -fx-faint-focus-color: transparent;
 
     /* --- Global Typography (Latent tokens: --font-sans, --text-body) --- */
     -fx-font-family: "Inter", "Segoe UI", Arial, sans-serif;
@@ -39,15 +45,23 @@
 
 .content-title {
     -fx-text-fill:   -app-accent;
-    -fx-font-weight: bold;
-    -fx-font-size:   1.5em;
+    -fx-font-weight: 700;
+    -fx-font-size:   24px;
+    -fx-letter-spacing: -0.3px;
     -fx-padding:     0 0 10 0;
 }
 
 .app-title {
     -fx-text-fill:   -app-text-primary;
-    -fx-font-weight: bold;
-    -fx-font-size:   1.1em;
+    -fx-font-weight: 600;
+    -fx-font-size:   17px;
+}
+
+.stat-label {
+    -fx-text-fill:      -app-text-muted;
+    -fx-font-size:      11px;
+    -fx-font-weight:    600;
+    -fx-letter-spacing: 0.7px;
 }
 
 /* 3. WINDOW CHROME (Latent --titlebar-height: 52px) */
@@ -55,36 +69,69 @@
 .custom-title-bar {
     -fx-background-color: -app-bg-secondary;
     -fx-alignment:        center-left;
-    -fx-padding:          0 2 0 0;
-    -fx-border-color:     -app-border-subtle;
-    -fx-border-width:     0 0 1 0;
+    -fx-padding:          0 8 0 0;
+    -fx-border-color:     linear-gradient(to right, #4FD8D0, #9B7EF5, transparent 65%); /* --gradient-brand */
+    -fx-border-width:     0 0 2 0;
+}
+
+.title-mark {
+    -fx-background-color:  linear-gradient(to bottom right, #67E0D8 0%, #9B7EF5 100%); /* BrandMark.jsx gradient */
+    -fx-background-radius: 6px;
+    -fx-min-width:          20;
+    -fx-min-height:         20;
+    -fx-max-width:          20;
+    -fx-max-height:         20;
 }
 
 .title-label {
     -fx-text-fill:   -app-text-primary;
     -fx-font-weight: 600;
     -fx-font-size:   13px;
-    -fx-padding:     0 0 0 15;
+    -fx-padding:     0 0 0 10;
 }
 
 .window-button {
-    -fx-background-color: transparent;
-    -fx-text-fill:        -app-text-muted;
-    -fx-border-color:     transparent;
-    -fx-padding:          10 15;
-    -fx-background-radius: 0;
+    -fx-background-color:  transparent;
+    -fx-text-fill:         -app-text-muted;
+    -fx-border-color:      -app-border-subtle;
+    -fx-border-width:      1;
+    -fx-border-radius:     6px; /* --radius-sm */
+    -fx-background-radius: 6px;
     -fx-background-insets: 0;
+    -fx-padding:           0;
+    -fx-min-width:         32;
+    -fx-min-height:        32;
+    -fx-max-width:         32;
+    -fx-max-height:        32;
     -fx-focus-traversable: false;
 }
 
 .window-button:hover {
-    -fx-background-color: rgba(255, 255, 255, 0.1);
+    -fx-background-color: rgba(255, 255, 255, 0.06);
+    -fx-border-color:     -app-border-strong;
     -fx-text-fill:        -app-text-primary;
 }
 
-.button.window-close:hover {
+.window-button.window-close {
+    -fx-text-fill:    -app-warning-red;
+    -fx-border-color: rgba(242, 102, 91, 0.35); /* IconButton danger variant */
+}
+
+.window-button.window-close:hover {
     -fx-background-color: -app-warning-red;
+    -fx-border-color:     -app-warning-red;
     -fx-text-fill:        white;
+}
+
+.window-button.window-minimize:hover {
+    -fx-background-color: #F5B84E; /* --amber-500 */
+    -fx-border-color:     #F5B84E;
+    -fx-text-fill:        #06101A;
+}
+
+.window-button.window-minimize:hover .ikonli-font-icon {
+    -fx-fill:       #06101A;
+    -fx-icon-color: #06101A;
 }
 
 /* 5. GENERIC CONTROLS (Latent Button.jsx "secondary" variant look) */
@@ -108,6 +155,10 @@
     -fx-border-color:             -app-border-subtle;
 }
 
+.text-area:focused, .text-field:focused {
+    -fx-border-color: -app-accent; /* --color-border-focus, replaces the default JavaFX glow */
+}
+
 .ikonli-font-icon {
     -fx-fill:       -app-accent;
     -fx-icon-color: -app-accent;
@@ -116,6 +167,26 @@
 .button:hover .ikonli-font-icon {
     -fx-fill:       #06101A;
     -fx-icon-color: #06101A;
+}
+
+.window-button .ikonli-font-icon {
+    -fx-fill:       -app-text-muted;
+    -fx-icon-color: -app-text-muted;
+}
+
+.window-button:hover .ikonli-font-icon {
+    -fx-fill:       -app-text-primary;
+    -fx-icon-color: -app-text-primary;
+}
+
+.window-button.window-close .ikonli-font-icon {
+    -fx-fill:       -app-warning-red;
+    -fx-icon-color: -app-warning-red;
+}
+
+.window-button.window-close:hover .ikonli-font-icon {
+    -fx-fill:       white;
+    -fx-icon-color: white;
 }
 
 .drop-zone {
@@ -129,9 +200,28 @@
 .drop-zone:hover, .drop-zone-active {
     -fx-border-color:     -app-accent;
     -fx-background-color: rgba(79, 216, 208, 0.12);
+    -fx-effect: dropshadow(gaussian, rgba(79,216,208,0.35), 16, 0.25, 0, 0);
 }
 
-/* 6. DATA DISPLAYS (Latent Card.jsx look: surface-1, subtle border, radius-lg) */
+/* Loaded-image frame: same card treatment as .income-stats-box but no internal
+   padding, so the preview image fills the frame instead of overflowing past it. */
+.image-frame {
+    -fx-background-color:  -app-bg-card;
+    -fx-background-radius: 12px;
+    -fx-border-color:      -app-border-subtle;
+    -fx-border-radius:     12px;
+    -fx-border-width:      1;
+    -fx-padding:           0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 6, 0.1, 0, 1);
+}
+
+.image-frame.drop-zone-active {
+    -fx-border-color:     -app-accent;
+    -fx-background-color: rgba(79, 216, 208, 0.12);
+    -fx-effect: dropshadow(gaussian, rgba(79,216,208,0.35), 16, 0.25, 0, 0);
+}
+
+/* 6. DATA DISPLAYS (Latent Card.jsx look: surface-1, subtle border, radius-lg, shadow-card) */
 
 .income-stats-box {
     -fx-background-color: -app-bg-card;
@@ -140,6 +230,15 @@
     -fx-border-radius:    12px;
     -fx-border-width:     1;
     -fx-padding:          15;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.45), 6, 0.1, 0, 1);
+}
+
+/* Higher specificity than .income-stats-box alone, so the active-drag glow always
+   wins even when the image area has already switched to its "loaded" card style. */
+.income-stats-box.drop-zone-active {
+    -fx-border-color:     -app-accent;
+    -fx-background-color: rgba(79, 216, 208, 0.12);
+    -fx-effect: dropshadow(gaussian, rgba(79,216,208,0.35), 16, 0.25, 0, 0);
 }
 
 .income-stat-value {
@@ -166,6 +265,7 @@
     -fx-border-color:  -app-accent;
     -fx-border-width:  1.5;
     -fx-border-radius: 12px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.65), 30, 0.2, 0, 8);
 }
 
 .dialog-pane > .container {
@@ -194,6 +294,20 @@
     -fx-border-width:      1.5;
     -fx-border-radius:     12px;
     -fx-background-insets: 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.65), 30, 0.2, 0, 8);
+}
+
+.toast {
+    -fx-background-color:  -app-bg-card-raised;
+    -fx-text-fill:         -app-text-primary;
+    -fx-border-color:      -app-accent;
+    -fx-border-width:      1;
+    -fx-border-radius:     8px;
+    -fx-background-radius: 8px;
+    -fx-padding:           10 16;
+    -fx-font-size:         12px;
+    -fx-font-weight:       600;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.55), 20, 0.15, 0, 6); /* --shadow-popover */
 }
 
 .custom-dialog .text-area {
