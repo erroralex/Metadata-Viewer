@@ -165,6 +165,15 @@ areas, using the token type scale (`--text-h1` 28px down to `--text-caption`
 - Raw-JSON viewer dialog carried over, restyled with the new tokens
   (JetBrains Mono for the JSON body).
 - No "Save Favorite" button or any Favorites-related affordance.
+- A small settings/about icon button in `CustomTitleBar` (Ikonli, ghost-button
+  style) opens a `Dialog`-styled settings modal (new `ui/views/SettingsDialog.java`
+  or similar) containing: the `alx_logo.png` dev mark, app name/version, GitHub
+  Sponsors and Ko-fi links (`https://github.com/sponsors/erroralex`,
+  `https://ko-fi.com/error_alex` — same as `README.md`'s "Support the Project"
+  section), and a note/link pointing users to Latent Library for
+  Favorites/Scrubber/Speed Sorter now that those features live there. Links
+  open via `java.awt.Desktop.browse`. This replaces `SideNavigation`'s old
+  lower-logo-area as the alx_logo's new home, now that the sidebar is gone.
 
 ## Cross-platform build fix
 
