@@ -14,17 +14,18 @@ A high-performance JavaFX desktop application designed to inspect and extract ge
 
 ## ✨ Key Features
 
-* **Universal Compatibility:** Intelligent parsing for **ComfyUI** (API & Workflow graphs), **SwarmUI**, **Automatic1111 / Forge**, **InvokeAI**, **NovelAI**, and **SD-Matrix**.
+* **Universal Compatibility:** Intelligent parsing for **ComfyUI** (API & Workflow graphs), **SwarmUI**, **Automatic1111 / Forge**, **InvokeAI**, and **NovelAI**.
 * **Advanced ComfyUI Engine:**
   * **Graph Traversal:** Resolves connected prompts, samplers, schedulers, models, and LoRAs across complex execution flows.
   * **Custom Node Support:** Recursively extracts parameters from advanced custom nodes (Power LoRA Loaders, KSampler variations, reroutes).
-  * **Extended Field Discovery:** Extracts Scheduler, Denoise, Hires. fix, Model Hash, Distilled CFG, and ControlNet parameters.
+  * **Extended Field Discovery:** Surfaces Scheduler, Denoise, and Hires. fix as dedicated fields; Distilled CFG (flux-guidance) is folded into the CFG field. Model Hash and ControlNet are A1111/Forge-only today — still captured, but only visible via the Raw Metadata inspector for other sources.
 * **Physical Fallback:** Reads physical image headers to guarantee valid image dimensions and file size even when metadata is missing or malformed.
-* **Latent Design System:** Clean, modern dark UI styling matching the Latent ecosystem token specifications.
+* **Latent Design System:** Clean, modern dark UI styled against the Latent ecosystem's token specifications — shadows, gradients, and type scale included.
 * **Interactive UI:**
-  * **Drag & Drop:** Immediate extraction upon dropping any PNG, JPG, JPEG, or WEBP image.
+  * **Drag & Drop:** Drop any PNG, JPG, JPEG, or WEBP directly onto the image preview for instant extraction — even to replace an image that's already loaded.
   * **Fullscreen Preview:** Click any image for a modal, high-res inspection view.
-  * **Raw Inspector:** Debug non-standard outputs with a raw text/JSON inspection modal.
+  * **Raw Inspector:** Debug non-standard outputs with a raw text/JSON inspection modal, with one-click copy.
+  * **Copy Feedback:** Prompt and raw-metadata copy actions confirm with a toast instead of a silent clipboard write.
 * **Lightweight & Cross-Platform:** Programmatic JavaFX (No FXML) with zero startup lag and cross-platform build support.
 
 ---
@@ -52,7 +53,7 @@ java -jar target/MetadataViewer-1.1.0-SNAPSHOT.jar
 
 ## 📜 License
 
-Distributed under the **MIT License**. Free for personal and commercial use.
+Distributed under the **MIT License with Commons Clause** — see [LICENSE.md](LICENSE.md). Free to use, modify, and distribute; the Commons Clause condition means you can't sell the Software itself (e.g. as a hosted or paid service).
 
 ---
 
