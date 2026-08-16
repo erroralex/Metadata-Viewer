@@ -76,10 +76,23 @@ alone (not deleted by the app) but the app no longer touches it.
 Source: `Latent-Library\backend\src\main\java\com\nilsson\backend\strategy\*`
 and `Latent-Library\backend\src\main\java\com\nilsson\backend\service\{MetadataService,TextParamsParser}.java`.
 
-Latent-Library's `TextParamsParser` is the single orchestrator (JSON-format
-sniffing + ComfyUI node-graph walking + text-block dispatch). It already
-resolves the duplication that exists in MetaDataViewer's current split between
-`MetadataService.findKeysRecursively` and the old `service/parser/TextParamsParser`.
+**Correction after re-reading both codebases side by side:** `MetadataService`
+is the real orchestrator in both the old and new pipeline — it finds/scores
+the best metadata chunk, detects the source software, and for JSON payloads
+runs its own `findKeysRecursively` dispatch across the `MetadataStrategy` list
+(gating to `ComfyUIStrategy` only when `software.contains("ComfyUI")`).
+`TextParamsParser.parse()` is only actually invoked from
+`MetadataService.processRawMetadata` for the A1111/Forge **text-block**
+branch — even though `TextParamsParser.parse()` also contains its own
+independent JSON-handling code, that code path is effectively unreachable in
+the production pipeline (it's only exercised directly in
+`TextParamsParserTest`). This is the same shape of duplication that exists in
+MetaDataViewer today, not an improvement on it — the actual improvements are
+in the strategy implementations themselves (esp. `ComfyUIStrategy`) and in
+`MetadataService`'s chunk-scoring/software-detection logic. Port both files
+as-is (together they form the working pipeline in Latent-Library); don't try
+to "clean up" the duplication as part of this rework — that's a
+pre-existing, out-of-scope concern in the source project.
 
 Port plan:
 - Port `TextParamsParser.java`, `MetadataService.java`, and the 5 strategy
