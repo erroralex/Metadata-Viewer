@@ -31,9 +31,17 @@ This document tracks recent changes, current context, and next steps for AI and 
 - The `data/` directory (`data/favorites/`, `data/settings.json`) still exists on disk from before this rework and is still tracked in git, but nothing in the app reads or writes it anymore. Still needs a decision on whether to remove it from git (flagged previously, not yet resolved).
 - No automated test/screenshot coverage for the JavaFX UI layer — all of the above was verified by building via `mcp__idea__build_project` and launching the real `MetadataApp` run configuration to check for CSS parse warnings/exceptions, not a visual diff. Worth a manual pass over the four other metadata-source strategies (SwarmUI, InvokeAI, NovelAI, and non-flux ComfyUI) to confirm the stat-card auto-sizing and image-frame changes hold up on their typical field lengths too.
 
+- Release v1.1.0:
+  - `development` and `main` are merged and in sync (`main` at `d4f3fb0` as of this writing); `docs/release-notes.v1.1.0.md` added summarizing the whole Latent rework + polish pass for end users.
+  - Tagged and pushed `v1.1.0`, exercising `.github/workflows/build.yml` for the first time end-to-end: all three OS jobs (Windows/Linux/macOS) succeeded and published a GitHub Release with `MetadataViewer-windows.zip`/`-linux.zip`/`-macos.zip` attached (~45-50MB each). No `jdeps`/module or macOS Gatekeeper issues surfaced on this run — the concerns noted below in the prior version of this doc didn't materialize, but the app hasn't been manually launched from a downloaded release zip yet (only confirmed the workflow completed and produced assets).
+
+## Known issues / needs attention
+- The `data/` directory (`data/favorites/`, `data/settings.json`) still exists on disk from before this rework and is still tracked in git, but nothing in the app reads or writes it anymore. Still needs a decision on whether to remove it from git (flagged previously, not yet resolved).
+- No automated test/screenshot coverage for the JavaFX UI layer — all of the above was verified by building via `mcp__idea__build_project` and launching the real `MetadataApp` run configuration to check for CSS parse warnings/exceptions, not a visual diff. Worth a manual pass over the four other metadata-source strategies (SwarmUI, InvokeAI, NovelAI, and non-flux ComfyUI) to confirm the stat-card auto-sizing and image-frame changes hold up on their typical field lengths too.
+- The `v1.1.0` release zips haven't been manually downloaded and launched yet — worth a smoke test per OS (does the app actually start, does the JavaFX UI render, no missing-module crashes) before pointing users at the Releases page.
+
 ## Next Steps
-- `latent-rework` has been fast-forward merged into `development` and pushed to `origin/development`.
-- The release workflow (`.github/workflows/build.yml`) hasn't been exercised yet — push a `v*` tag (e.g. `v1.1.0`) to confirm the three-OS `jpackage` builds and GitHub Release upload actually work end-to-end. Most likely rough edges on a first run: `jdeps --print-module-deps` missing a module the app needs at runtime (would show as a `NoClassDefFoundError` at launch, fixable by adding the module explicitly), and macOS `jpackage` codesigning/Gatekeeper behavior on an unsigned app-image.
+- Manually smoke-test at least the Windows `v1.1.0` release zip (unzip, run `MetadataViewer.exe`, confirm it launches and extracts metadata from a real image) before announcing the release.
 - Consider adding a `src/main/resources/icon.icns` so the macOS build gets a real app icon instead of jpackage's default.
 - Consider whether `ComfyUIStrategy`'s dropped custom-node-name feature is worth reintroducing via a minimal local settings file, if users ask for it.
 - Consider teaching `ComfyUIStrategy` to actually extract Model Hash/ControlNet from its node graph (they're currently A1111-only); if that happens, their stat cards can come back.
