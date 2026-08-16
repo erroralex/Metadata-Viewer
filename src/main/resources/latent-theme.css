@@ -19,11 +19,6 @@
     -app-border-subtle: rgba(255,255,255,0.10); /* --color-border-default */
     -app-warning-red:   #F2665B; /* --color-danger */
 
-    /* --- Radii (Latent tokens) --- */
-    -app-radius-sm: 6px;
-    -app-radius-md: 8px;
-    -app-radius-lg: 12px;
-
     /* --- JavaFX Overrides --- */
     -fx-background-color: -app-bg-main;
     -fx-base:             -app-bg-main;
@@ -98,8 +93,8 @@
     -fx-background-color: -app-bg-card-raised;
     -fx-text-fill:        -app-text-primary;
     -fx-border-color:     -app-border-subtle;
-    -fx-border-radius:    -app-radius-md;
-    -fx-background-radius: -app-radius-md;
+    -fx-border-radius:    8px;
+    -fx-background-radius: 8px;
 }
 
 .button:hover {
@@ -128,7 +123,7 @@
     -fx-border-color:     rgba(79, 216, 208, 0.4);
     -fx-border-width:     2;
     -fx-border-style:     dashed;
-    -fx-border-radius:    -app-radius-lg;
+    -fx-border-radius:    12px;
 }
 
 .drop-zone:hover, .drop-zone-active {
@@ -140,9 +135,9 @@
 
 .income-stats-box {
     -fx-background-color: -app-bg-card;
-    -fx-background-radius: -app-radius-lg;
+    -fx-background-radius: 12px;
     -fx-border-color:     -app-border-subtle;
-    -fx-border-radius:    -app-radius-lg;
+    -fx-border-radius:    12px;
     -fx-border-width:     1;
     -fx-padding:          15;
 }
@@ -166,11 +161,11 @@
 
 .dialog-pane {
     -fx-background-color: -app-bg-main;
-    -fx-background-radius: -app-radius-lg;
+    -fx-background-radius: 12px;
     -fx-background-insets: 0;
     -fx-border-color:  -app-accent;
     -fx-border-width:  1.5;
-    -fx-border-radius: -app-radius-lg;
+    -fx-border-radius: 12px;
 }
 
 .dialog-pane > .container {
@@ -197,7 +192,7 @@
     -fx-background-color:  -app-bg-secondary;
     -fx-border-color:      -app-accent;
     -fx-border-width:      1.5;
-    -fx-border-radius:     -app-radius-lg;
+    -fx-border-radius:     12px;
     -fx-background-insets: 0;
 }
 
