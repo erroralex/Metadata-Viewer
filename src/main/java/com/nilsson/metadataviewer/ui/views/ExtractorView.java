@@ -1,7 +1,5 @@
 package com.nilsson.metadataviewer.ui.views;
 
-import com.nilsson.metadataviewer.model.FavoriteData;
-import com.nilsson.metadataviewer.model.FavoriteRegistry;
 import com.nilsson.metadataviewer.service.MetadataService;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -23,7 +21,6 @@ import org.kordamp.ikonli.fontawesome.FontAwesome;
 import org.kordamp.ikonli.javafx.FontIcon;
 
 import java.io.File;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -37,11 +34,16 @@ public class ExtractorView extends ScrollPane {
     private final TextField modelVal = createSelectableField("-");
     private final TextField softwareVal = createSelectableField("-");
     private final TextField samplerVal = createSelectableField("-");
+    private final TextField schedulerVal = createSelectableField("-");
     private final TextField stepsVal = createSelectableField("-");
     private final TextField cfgVal = createSelectableField("-");
     private final TextField seedVal = createSelectableField("-");
     private final TextField sizeVal = createSelectableField("-");
+    private final TextField denoiseVal = createSelectableField("-");
+    private final TextField hiresFixVal = createSelectableField("-");
+    private final TextField modelHashVal = createSelectableField("-");
     private final TextArea lorasVal = new TextArea("-");
+    private final TextArea controlNetVal = new TextArea("-");
 
     private final ImageView previewImageView = new ImageView();
     private final StackPane previewContainer = new StackPane();
@@ -58,26 +60,30 @@ public class ExtractorView extends ScrollPane {
         container.setPadding(new Insets(20, 30, 30, 30));
         container.setAlignment(Pos.TOP_CENTER);
 
-        Label title = new Label("AI Image Metadata Extractor");
-        title.getStyleClass().add("content-title");
+        HBox mainSplit = new HBox(20);
+        mainSplit.setAlignment(Pos.TOP_CENTER);
 
-        HBox dropSection = new HBox(20);
-        dropSection.setAlignment(Pos.TOP_CENTER);
+        // --- Left: image column (drop zone doubles as preview) ---
+        VBox imageColumn = new VBox(10);
+        imageColumn.setAlignment(Pos.TOP_CENTER);
+        imageColumn.setPrefWidth(360);
+        imageColumn.setMinWidth(280);
 
         VBox dropZone = createDropZone();
-        HBox.setHgrow(dropZone, Priority.ALWAYS);
 
         setupPreviewContainer();
-
-        VBox previewWrapper = new VBox(10);
-        previewWrapper.setAlignment(Pos.TOP_CENTER);
+        previewContainer.setPrefSize(320, 320);
+        previewImageView.setFitWidth(300);
+        previewImageView.setFitHeight(300);
 
         Label fullScreenHint = new Label("Click to Fullscreen");
         fullScreenHint.setStyle("-fx-font-size: 10px; -fx-text-fill: -app-text-muted;");
 
-        previewWrapper.getChildren().addAll(fullScreenHint, previewContainer, createSaveButton(), createRawButton());
+        imageColumn.getChildren().addAll(dropZone, previewContainer, fullScreenHint, createRawButton());
 
-        dropSection.getChildren().addAll(dropZone, previewWrapper);
+        // --- Right: metadata panel ---
+        VBox metadataPanel = new VBox(15);
+        HBox.setHgrow(metadataPanel, Priority.ALWAYS);
 
         VBox promptsWrapper = new VBox(15);
         promptsWrapper.getChildren().addAll(
@@ -85,86 +91,65 @@ public class ExtractorView extends ScrollPane {
                 createPromptSection("Negative Prompt", negativePromptText, 60)
         );
 
-        // --- Stats Grid ---
         VBox statsWrapper = new VBox(12);
 
         VBox modelCard = createStatCard("Model", modelVal, FontAwesome.CUBE);
         VBox softwareCard = createStatCard("Software", softwareVal, FontAwesome.TERMINAL);
-
-        // ROW 1: Model | Software
-        HBox.setHgrow(modelCard, Priority.ALWAYS); // Model takes flexible space
-        softwareCard.setPrefWidth(250);            // Fixed space for "ComfyUI"
+        HBox.setHgrow(modelCard, Priority.ALWAYS);
+        softwareCard.setPrefWidth(220);
         HBox.setHgrow(softwareCard, Priority.NEVER);
-
         HBox row1 = new HBox(12, modelCard, softwareCard);
 
         VBox stepsCard = createStatCard("Steps", stepsVal, FontAwesome.TASKS);
         VBox cfgCard = createStatCard("CFG", cfgVal, FontAwesome.ADJUST);
         VBox seedCard = createStatCard("Seed", seedVal, FontAwesome.KEY);
         VBox samplerCard = createStatCard("Sampler", samplerVal, FontAwesome.SLIDERS);
-        VBox sizeCard = createStatCard("Size", sizeVal, FontAwesome.IMAGE);
-
-        // ROW 2: Steps | CFG | Seed | Sampler | Size
-        stepsCard.setPrefWidth(90);
-        cfgCard.setPrefWidth(90);
-
-        seedCard.setPrefWidth(200);
+        VBox schedulerCard = createStatCard("Scheduler", schedulerVal, FontAwesome.CLOCK_O);
+        stepsCard.setPrefWidth(80);
+        cfgCard.setPrefWidth(80);
+        seedCard.setPrefWidth(180);
         HBox.setHgrow(seedCard, Priority.NEVER);
-
         HBox.setHgrow(samplerCard, Priority.ALWAYS);
+        HBox.setHgrow(schedulerCard, Priority.ALWAYS);
+        HBox row2 = new HBox(12, stepsCard, cfgCard, seedCard, samplerCard, schedulerCard);
 
-        sizeCard.setPrefWidth(140);
-        HBox.setHgrow(sizeCard, Priority.NEVER);
+        VBox sizeCard = createStatCard("Size", sizeVal, FontAwesome.IMAGE);
+        VBox denoiseCard = createStatCard("Denoise", denoiseVal, FontAwesome.TINT);
+        VBox hiresCard = createStatCard("Hires. fix", hiresFixVal, FontAwesome.EXPAND);
+        VBox modelHashCard = createStatCard("Model Hash", modelHashVal, FontAwesome.HASHTAG);
+        HBox row3 = new HBox(12, sizeCard, denoiseCard, hiresCard, modelHashCard);
+        HBox.setHgrow(sizeCard, Priority.ALWAYS);
+        HBox.setHgrow(denoiseCard, Priority.ALWAYS);
+        HBox.setHgrow(hiresCard, Priority.ALWAYS);
+        HBox.setHgrow(modelHashCard, Priority.ALWAYS);
 
-        HBox row2 = new HBox(12, stepsCard, cfgCard, seedCard, samplerCard, sizeCard);
-
-        // Loras TextArea
         lorasVal.setEditable(false);
         lorasVal.setWrapText(true);
-        lorasVal.setPrefHeight(80);
+        lorasVal.setPrefHeight(70);
         lorasVal.getStyleClass().add("text-area");
         lorasVal.setStyle("-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0;");
 
-        statsWrapper.getChildren().addAll(row1, row2, createStatCard("Loras Used", lorasVal, FontAwesome.PUZZLE_PIECE));
+        controlNetVal.setEditable(false);
+        controlNetVal.setWrapText(true);
+        controlNetVal.setPrefHeight(50);
+        controlNetVal.getStyleClass().add("text-area");
+        controlNetVal.setStyle("-fx-background-color: transparent; -fx-background-insets: 0; -fx-padding: 0;");
 
-        container.getChildren().addAll(title, dropSection, promptsWrapper, statsWrapper);
+        statsWrapper.getChildren().addAll(
+                row1, row2, row3,
+                createStatCard("Loras Used", lorasVal, FontAwesome.PUZZLE_PIECE),
+                createStatCard("ControlNet", controlNetVal, FontAwesome.SITEMAP)
+        );
+
+        metadataPanel.getChildren().addAll(promptsWrapper, statsWrapper);
+
+        mainSplit.getChildren().addAll(imageColumn, metadataPanel);
+
+        Label title = new Label("AI Image Metadata Extractor");
+        title.getStyleClass().add("content-title");
+
+        container.getChildren().addAll(title, mainSplit);
         this.setContent(container);
-    }
-
-    public void populateFromFavorite(FavoriteData fav) {
-        this.lastData = new HashMap<>();
-        if (fav == null) return;
-
-        lastData.put("Raw", fav.getRaw());
-        lastData.put("Prompt", fav.getPrompt());
-        lastData.put("Negative", fav.getNegative());
-        lastData.put("Model", fav.getModel());
-        lastData.put("Software", fav.getSoftware());
-        lastData.put("Sampler", fav.getSampler());
-        lastData.put("Steps", fav.getSteps());
-        lastData.put("CFG", fav.getCfg());
-        lastData.put("Seed", fav.getSeed());
-        lastData.put("Size", fav.getSize());
-        lastData.put("Loras", fav.getLoras());
-
-        promptText.setText(fav.getPrompt());
-        negativePromptText.setText(fav.getNegative());
-        modelVal.setText(fav.getModel());
-        softwareVal.setText(fav.getSoftware() != null ? fav.getSoftware() : "Unknown");
-        samplerVal.setText(fav.getSampler());
-        stepsVal.setText(fav.getSteps());
-        cfgVal.setText(fav.getCfg());
-        seedVal.setText(fav.getSeed());
-        sizeVal.setText(fav.getSize() != null ? fav.getSize() : "N/A");
-        lorasVal.setText(fav.getLoras());
-
-        if (fav.getThumbnailPath() != null) {
-            File thumbFile = new File(fav.getThumbnailPath());
-            this.lastFile = thumbFile.exists() ? thumbFile : null;
-            if (this.lastFile != null) {
-                loadImageSafe(this.lastFile);
-            }
-        }
     }
 
     private void setupPreviewContainer() {
@@ -230,54 +215,6 @@ public class ExtractorView extends ScrollPane {
             e.printStackTrace();
             view.setImage(null);
         }
-    }
-
-    private Button createSaveButton() {
-        Button fv = new Button("Save Favorite");
-        fv.setGraphic(new FontIcon(FontAwesome.STAR));
-        fv.getStyleClass().add("button");
-        fv.setMaxWidth(Double.MAX_VALUE);
-
-        fv.setOnAction(e -> {
-            if (lastData == null) return;
-
-            TextInputDialog tid = new TextInputDialog("Prompt Name");
-            tid.initStyle(StageStyle.UNDECORATED);
-            DialogPane pane = tid.getDialogPane();
-            pane.getStyleClass().add("custom-dialog");
-            if (this.getScene() != null) pane.getStylesheets().addAll(this.getScene().getStylesheets());
-            setupDialogDragging(pane);
-
-            tid.showAndWait().ifPresent(name -> {
-                String size = lastData.getOrDefault("Size", "N/A");
-                if (size.equals("N/A") && lastData.containsKey("Width") && lastData.containsKey("Height")) {
-                    size = lastData.get("Width") + "x" + lastData.get("Height");
-                }
-
-                FavoriteData fav = new FavoriteData(
-                        name,
-                        lastData.getOrDefault("Prompt", ""),
-                        lastData.getOrDefault("Negative", "None"),
-                        lastData.getOrDefault("Model", "N/A"),
-                        lastData.getOrDefault("Software", "Unknown"),
-                        lastData.getOrDefault("Sampler", "N/A"),
-                        lastData.getOrDefault("Steps", "N/A"),
-                        lastData.getOrDefault("CFG", "N/A"),
-                        lastData.getOrDefault("Seed", "N/A"),
-                        size,
-                        lastData.getOrDefault("Loras", "None"),
-                        lastData.getOrDefault("Raw", ""),
-                        lastFile != null ? lastFile.getAbsolutePath() : null
-                );
-
-                if (lastFile != null && lastFile.exists()) {
-                    String savedPath = FavoriteRegistry.getInstance().saveImage(lastFile, fav.getId());
-                    fav.setThumbnailPath(savedPath);
-                }
-                FavoriteRegistry.getInstance().addFavorite(fav);
-            });
-        });
-        return fv;
     }
 
     private Button createRawButton() {
@@ -421,7 +358,9 @@ public class ExtractorView extends ScrollPane {
     public void process(File f) {
         this.lastFile = f;
         promptText.setText("Parsing metadata...");
-        this.getScene().setCursor(javafx.scene.Cursor.WAIT);
+        if (this.getScene() != null) {
+            this.getScene().setCursor(javafx.scene.Cursor.WAIT);
+        }
 
         Task<Map<String, String>> extractionTask = new Task<Map<String, String>>() {
             @Override
@@ -439,28 +378,34 @@ public class ExtractorView extends ScrollPane {
             modelVal.setText(lastData.getOrDefault("Model", "N/A"));
             softwareVal.setText(lastData.getOrDefault("Software", "Unknown"));
             samplerVal.setText(lastData.getOrDefault("Sampler", "N/A"));
+            schedulerVal.setText(lastData.getOrDefault("Scheduler", "N/A"));
             stepsVal.setText(lastData.getOrDefault("Steps", "N/A"));
             cfgVal.setText(lastData.getOrDefault("CFG", "N/A"));
             seedVal.setText(lastData.getOrDefault("Seed", "N/A"));
+            sizeVal.setText(lastData.getOrDefault("Resolution", "N/A"));
+            denoiseVal.setText(lastData.getOrDefault("Denoise", "N/A"));
+            hiresFixVal.setText(lastData.getOrDefault("Hires. fix", "Disabled"));
+            modelHashVal.setText(lastData.getOrDefault("Model Hash", "N/A"));
             lorasVal.setText(lastData.getOrDefault("Loras", "None"));
-
-            String sizeText = lastData.get("Size");
-            if (sizeText == null && lastData.containsKey("Width") && lastData.containsKey("Height")) {
-                sizeText = lastData.get("Width") + "x" + lastData.get("Height");
-            }
-            sizeVal.setText(sizeText != null ? sizeText : "N/A");
+            controlNetVal.setText(lastData.getOrDefault("ControlNet", "None"));
 
             loadImageSafe(f);
 
-            this.getScene().setCursor(javafx.scene.Cursor.DEFAULT);
+            if (this.getScene() != null) {
+                this.getScene().setCursor(javafx.scene.Cursor.DEFAULT);
+            }
         });
 
         extractionTask.setOnFailed(e -> {
             Throwable ex = extractionTask.getException();
-            promptText.setText("Error reading file: " + ex.getMessage());
+            promptText.setText("Error reading file: " + (ex != null ? ex.getMessage() : "Unknown error"));
             modelVal.setText("Error");
-            this.getScene().setCursor(javafx.scene.Cursor.DEFAULT);
-            ex.printStackTrace();
+            if (this.getScene() != null) {
+                this.getScene().setCursor(javafx.scene.Cursor.DEFAULT);
+            }
+            if (ex != null) {
+                ex.printStackTrace();
+            }
 
             loadImageSafe(f);
         });
