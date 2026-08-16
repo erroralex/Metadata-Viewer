@@ -38,8 +38,14 @@ is stateless):
 
 ### Cross-platform build & standalone releases
 - `pom.xml` now resolves the `javafx-graphics` classifier per OS instead of being hardcoded to Windows.
-- This release ships as a standalone, no-install-required build per OS (Windows/Linux/macOS), packaged via
-  `jpackage` with a minimal bundled runtime — no separate Java install needed to run it.
+- This release ships as a standalone, no-install-required build per OS, packaged via `jpackage` with a
+  minimal bundled runtime — no separate Java install needed to run it.
+- **Windows:** `MetadataViewer-windows.exe` is a genuinely single-file download — no separate extraction
+  step. It's wrapped with [Warp](https://github.com/dgiagio/warp), which self-extracts to a temp folder at
+  launch and runs from there.
+- **macOS / Linux:** `MetadataViewer-macos.zip` / `MetadataViewer-linux.zip` — extract with a real "Extract
+  All" (not just browsing into the zip) before running, since the app needs its `app`/`runtime`
+  subfolders alongside the executable.
 
 ### Repo hygiene
 - Added `LICENSE.md` (MIT + Commons Clause) and `CONTRIBUTING.md`.
