@@ -17,7 +17,7 @@ RequestExecutionLevel user
 Unicode true
 
 Section
-  IfFileExists "${CACHE_DIR}\${APP_EXE}" already_extracted 0
+  IfFileExists "${CACHE_DIR}\${APP_EXE}" already_extracted
     SetOutPath "${CACHE_DIR}"
     File /r "dist\MetadataViewer\*.*"
   already_extracted:
