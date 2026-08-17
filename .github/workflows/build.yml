@@ -114,21 +114,23 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
           $workspace = (Get-Location).Path
-          # "choco install" shifts the real Win32 process working directory
-          # as a side effect (a known Chocolatey quirk). Set-Location alone
-          # only updates PowerShell's own virtual $PWD, not the actual OS
-          # current directory that native .exes launched via "&" (like
-          # makensis.exe) inherit — confirmed by "Using ... from <correct
-          # workspace path>" still being followed by "no files found" for a
-          # path relative to that same workspace. Have to sync
-          # [Environment]::CurrentDirectory explicitly, not just Set-Location.
+          $srcDir = Join-Path $workspace "dist\MetadataViewer"
+          $outFile = Join-Path $workspace "release\MetadataViewer-windows.exe"
           choco install nsis --no-progress -y
-          Set-Location $workspace
-          [System.IO.Directory]::SetCurrentDirectory($workspace)
           $makensis = Get-ChildItem -Path "C:\Program Files*\NSIS*" -Filter makensis.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
           if (-not $makensis) { throw "makensis.exe not found after installing NSIS" }
-          Write-Host "Using $makensis from $(Get-Location)"
-          & $makensis packaging\windows-portable.nsi
+          # Two prior attempts assumed the "no files found" failure was a
+          # working-directory problem (both Set-Location and
+          # [Environment]::CurrentDirectory were confirmed correct at
+          # invocation time via logging, yet it still failed identically) —
+          # so this diagnostic actually proves whether the folder is still
+          # there right before the compile, instead of guessing again.
+          if (-not (Test-Path "$srcDir\MetadataViewer.exe")) {
+            Get-ChildItem -Path $workspace -ErrorAction SilentlyContinue | Format-Table -AutoSize
+            throw "$srcDir\MetadataViewer.exe missing right before makensis runs"
+          }
+          Write-Host "Using $makensis, SRC_DIR=$srcDir, OUT_FILE=$outFile"
+          & $makensis "/DSRC_DIR=$srcDir" "/DOUT_FILE=$outFile" packaging\windows-portable.nsi
 
       - name: Zip app image
         if: runner.os != 'Windows'
