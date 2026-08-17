@@ -3,7 +3,7 @@ name: Build and Release
 on:
   push:
     tags:
-      - 'v*' # Trigger only when a tag starting with 'v' is pushed (e.g., v1.1.0)
+      - 'v*' # Trigger only when a tag starting with 'v' is pushed (e.g., v1.2.0)
 
 permissions:
   contents: write

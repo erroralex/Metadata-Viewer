@@ -1,4 +1,7 @@
-# v1.1.0 — The Latent Rework
+# v1.2.0 — The Latent Rework
+
+> Numbered v1.2.0 rather than v1.1.0 to avoid colliding with an older `metadata-v.1.1.0` release from
+> January under a previous tag-naming convention.
 
 MetaDataViewer is now a focused, single-screen metadata extractor with a rebuilt parsing engine and a UI
 restyled to the Latent Design System. Favorites, the Metadata Scrubber, and Speed Sorter have moved to
