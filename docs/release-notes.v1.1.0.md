@@ -41,8 +41,9 @@ is stateless):
 - This release ships as a standalone, no-install-required build per OS, packaged via `jpackage` with a
   minimal bundled runtime — no separate Java install needed to run it.
 - **Windows:** `MetadataViewer-windows.exe` is a genuinely single-file download — no separate extraction
-  step. It's wrapped with [Warp](https://github.com/dgiagio/warp), which self-extracts to a temp folder at
-  launch and runs from there.
+  step. It's packed with NSIS (the same tool class Electron's "portable" builds use), so it's a proper
+  GUI app with no console window: it self-extracts to a local cache on first run and launches straight
+  from that cache on later runs.
 - **macOS / Linux:** `MetadataViewer-macos.zip` / `MetadataViewer-linux.zip` — extract with a real "Extract
   All" (not just browsing into the zip) before running, since the app needs its `app`/`runtime`
   subfolders alongside the executable.
