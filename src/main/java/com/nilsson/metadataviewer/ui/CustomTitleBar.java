@@ -34,7 +34,7 @@ public class CustomTitleBar extends HBox {
         StackPane titleMark = createBrandMark();
         HBox.setMargin(titleMark, new Insets(0, 0, 0, 15));
 
-        Label titleLabel = new Label("Metadata Extractor");
+        Label titleLabel = new Label("Metadata Viewer");
         titleLabel.getStyleClass().add("title-label");
 
         HBox spacer = new HBox();
@@ -122,7 +122,7 @@ public class CustomTitleBar extends HBox {
 
     /**
      * Adapts Latent Design System's BrandMark.jsx (gradient rounded square,
-     * scaled to a 20px titlebar icon) with an "M" glyph for Metadata Extractor
+     * scaled to a 20px titlebar icon) with an "M" glyph for Metadata Viewer
      * in place of Latent's own "L".
      */
     private StackPane createBrandMark() {

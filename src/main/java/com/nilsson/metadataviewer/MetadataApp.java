@@ -53,7 +53,7 @@ public class MetadataApp extends Application {
             ResizeHelper.addResizeListener(primaryStage);
 
             primaryStage.setScene(scene);
-            primaryStage.setTitle("Metadata Extractor by ALX");
+            primaryStage.setTitle("Metadata Viewer by ALX");
             if (getClass().getResource("/icon.png") != null) {
                 primaryStage.getIcons().add(new javafx.scene.image.Image(getClass().getResource("/icon.png").toExternalForm()));
             }

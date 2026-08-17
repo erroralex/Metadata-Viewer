@@ -140,7 +140,7 @@ public class ExtractorView extends ScrollPane {
 
         mainSplit.getChildren().addAll(imageColumn, metadataPanel);
 
-        Label title = new Label("AI Image Metadata Extractor");
+        Label title = new Label("AI Image Metadata Viewer");
         title.getStyleClass().add("content-title");
 
         container.getChildren().addAll(title, mainSplit);
