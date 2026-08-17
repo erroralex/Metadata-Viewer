@@ -48,7 +48,7 @@ public class SettingsDialog {
         logoView.setPreserveRatio(true);
         logoView.setSmooth(true);
 
-        Label appName = new Label("Metadata Extractor");
+        Label appName = new Label("Metadata Viewer");
         appName.getStyleClass().add("app-title");
 
         Label version = new Label("v" + VERSION);
