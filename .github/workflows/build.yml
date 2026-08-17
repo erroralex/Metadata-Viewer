@@ -101,17 +101,23 @@ jobs:
       # cache on first run and launches straight from cache after that, with
       # no UI, no console, and no admin elevation. Linux/macOS keep the
       # zipped folder — this was a Windows-specific report.
-      # Runs under pwsh, not bash: windows-latest ships NSIS 3.10 on the
-      # default (PowerShell/cmd) PATH already, but git-bash's PATH translation
-      # doesn't reliably see it, which is what broke the first attempt at this
-      # step (IfFileExists syntax was also wrong on that run — fixed
-      # separately, but staying on pwsh here removes the PATH guesswork too).
+      # Confirmed via an actual failed run's log: this runner image
+      # (windows-2025-vs2026) does NOT have makensis on PATH, contrary to
+      # older runner-image docs. Installs it via choco, then searches for the
+      # actual binary instead of assuming a fixed path, since chocolatey's
+      # install location isn't guaranteed to match every image/package
+      # version. Runs under pwsh (not bash) since that's a more reliable
+      # environment for locating Windows-installed tools.
       - name: Pack into single-file exe (NSIS)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
-          makensis packaging\windows-portable.nsi
+          choco install nsis --no-progress -y
+          $makensis = Get-ChildItem -Path "C:\Program Files*\NSIS*" -Filter makensis.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $makensis) { throw "makensis.exe not found after installing NSIS" }
+          Write-Host "Using $makensis"
+          & $makensis packaging\windows-portable.nsi
 
       - name: Zip app image
         if: runner.os != 'Windows'
