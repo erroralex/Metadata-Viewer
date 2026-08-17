@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="src/main/resources/icon.png" width="64" alt="Metadata Viewer Icon">
+</p>
+
 # AI Metadata Viewer & Extractor
 
 ![Java](https://img.shields.io/badge/Java-21-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)
@@ -9,6 +13,22 @@ A high-performance JavaFX desktop application designed to inspect and extract ge
 
 > [!NOTE]
 > Favorites Library, Metadata Scrubber, and Speed Sorter have moved to [Latent Library](https://github.com/erroralex). MetaDataViewer is now focused purely as a lightweight, fast, single-screen extractor utility.
+
+---
+
+## 📸 Interface
+
+<p align="center">
+  <img src="src/main/resources/screenshots/viewer.png" width="800" alt="Metadata Viewer main interface">
+  <br>
+  <i>Single-screen extractor: drop an image and every generation field populates instantly.</i>
+</p>
+
+<p align="center">
+  <img src="src/main/resources/screenshots/raw_metadata.png" width="800" alt="Raw Metadata inspector">
+  <br>
+  <i><b>Raw Metadata:</b> full unparsed output for non-standard or unrecognized sources, with one-click copy.</i>
+</p>
 
 ---
 
