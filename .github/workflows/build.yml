@@ -113,14 +113,18 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
-          $workspace = Get-Location
-          # "choco install" shifts the current directory as a side effect (a
-          # known Chocolatey quirk), which broke makensis's relative paths
-          # ("no files found" for dist\MetadataViewer\*.*) even though the
-          # files were confirmed present relative to $workspace. Restore it
-          # explicitly before invoking makensis.
+          $workspace = (Get-Location).Path
+          # "choco install" shifts the real Win32 process working directory
+          # as a side effect (a known Chocolatey quirk). Set-Location alone
+          # only updates PowerShell's own virtual $PWD, not the actual OS
+          # current directory that native .exes launched via "&" (like
+          # makensis.exe) inherit — confirmed by "Using ... from <correct
+          # workspace path>" still being followed by "no files found" for a
+          # path relative to that same workspace. Have to sync
+          # [Environment]::CurrentDirectory explicitly, not just Set-Location.
           choco install nsis --no-progress -y
           Set-Location $workspace
+          [System.IO.Directory]::SetCurrentDirectory($workspace)
           $makensis = Get-ChildItem -Path "C:\Program Files*\NSIS*" -Filter makensis.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
           if (-not $makensis) { throw "makensis.exe not found after installing NSIS" }
           Write-Host "Using $makensis from $(Get-Location)"
