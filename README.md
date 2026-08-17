@@ -12,7 +12,7 @@
 A high-performance JavaFX desktop application designed to inspect and extract generation metadata across the AI image generation ecosystem. It provides instant extraction, deep ComfyUI node-graph inspection, and raw metadata inspection for artists and developers.
 
 > [!NOTE]
-> Favorites Library, Metadata Scrubber, and Speed Sorter have moved to [Latent Library](https://github.com/erroralex). MetaDataViewer is now focused purely as a lightweight, fast, single-screen extractor utility.
+> Favorites Library, Metadata Scrubber, and Speed Sorter have moved to [Latent Library](https://github.com/erroralex/Latent-Library). MetaDataViewer is now focused purely as a lightweight, fast, single-screen extractor utility.
 
 ---
 
