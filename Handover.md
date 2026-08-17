@@ -30,6 +30,12 @@ This document tracks recent changes, current context, and next steps for AI and 
 - Release notes (`docs/release-notes.v1.2.0.md`) have no em dashes or AI-attribution phrasing per user request — keep future edits to that file consistent with that style.
 
 ## Known issues / needs attention
+- **This app has no SVG asset pipeline**, unlike Latent Library, Latent Tools, and Latent Model
+  Organizer. `MetadataApp.java`'s `Stage.getIcons()` and the `jpackage --icon` flag in
+  `Package CMD.md` both consume rasterized files only (`src/main/resources/icon.png`, `icon.ico`).
+  A brand-mark update here means delivering a pre-rendered PNG (1024x1024) and a multi-res ICO
+  (16/24/32/48/64/72/96/128/256, matching the existing set) rather than dropping in an SVG like the
+  sibling apps.
 - The `data/` directory (`data/favorites/`, `data/settings.json`) still exists on disk from before this rework and is still tracked in git, but nothing in the app reads or writes it anymore. Still needs a decision on whether to remove it from git.
 - Model Hash and ControlNet extraction is A1111/Forge-only; other sources only show them via the Raw Metadata inspector, not as dedicated cards. `ComfyUIStrategy` could be taught to extract these from its node graph if that's ever wanted.
 - The macOS build has no custom app icon yet (`icon.icns` doesn't exist; ships with jpackage's default).
