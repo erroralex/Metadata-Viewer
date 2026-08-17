@@ -48,9 +48,19 @@ is stateless):
   All" (not just browsing into the zip) before running, since the app needs its `app`/`runtime`
   subfolders alongside the executable.
 
+### Responsive layout & auto-growing prompts
+- Narrow windows no longer clip content off both edges — stat cards wrap onto new lines, and the
+  metadata panel stacks full-width under the image column below a ~720px window width instead of being
+  squeezed into an unreadable sliver.
+- The Positive/Negative Prompt boxes now grow to fit the actual prompt on each image load, up to a cap,
+  instead of staying a fixed short height regardless of length; past the cap, the box scrolls internally
+  and the rest of the panel stays reachable via the page's own scrollbar.
+
 ### Repo hygiene
 - Added `LICENSE.md` (MIT + Commons Clause) and `CONTRIBUTING.md`.
 - Added a tag-triggered GitHub Actions release workflow.
+- Renamed all app-facing text from "Metadata Extractor" to "Metadata Viewer" to match the app's actual
+  name, and refreshed the README's screenshots to the current UI.
 
 ## Known limitations
 
