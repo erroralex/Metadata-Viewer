@@ -59,10 +59,12 @@ public class ExtractorView extends ScrollPane {
     private Map<String, String> lastData;
     private File lastFile;
 
+    private static final double RESPONSIVE_BREAKPOINT = 720;
+
     public ExtractorView() {
         this.setFitToWidth(true);
         this.getStyleClass().add("content-view");
-        this.setHbarPolicy(ScrollBarPolicy.NEVER);
+        this.setHbarPolicy(ScrollBarPolicy.AS_NEEDED);
 
         VBox container = new VBox(15);
         container.setPadding(new Insets(20, 30, 30, 30));
@@ -74,8 +76,8 @@ public class ExtractorView extends ScrollPane {
         // --- Left: image column (drop zone doubles as preview) ---
         VBox imageColumn = new VBox(10);
         imageColumn.setAlignment(Pos.TOP_CENTER);
-        imageColumn.setPrefWidth(360);
-        imageColumn.setMinWidth(280);
+        imageColumn.setPrefWidth(320);
+        imageColumn.setMinWidth(240);
 
         setupImageArea();
 
@@ -98,32 +100,30 @@ public class ExtractorView extends ScrollPane {
         VBox statsWrapper = new VBox(12);
 
         VBox modelCard = createStatCard("Model", modelVal, FontAwesome.CUBE);
+        modelCard.setPrefWidth(320);
         VBox softwareCard = createStatCard("Software", softwareVal, FontAwesome.TERMINAL);
-        HBox.setHgrow(modelCard, Priority.ALWAYS);
         softwareCard.setPrefWidth(220);
-        HBox.setHgrow(softwareCard, Priority.NEVER);
-        HBox row1 = new HBox(12, modelCard, softwareCard);
+        FlowPane row1 = new FlowPane(12, 12, modelCard, softwareCard);
 
         VBox stepsCard = createStatCard("Steps", stepsVal, FontAwesome.TASKS);
         VBox cfgCard = createStatCard("CFG", cfgVal, FontAwesome.ADJUST);
         VBox seedCard = createStatCard("Seed", seedVal, FontAwesome.KEY);
         VBox samplerCard = createStatCard("Sampler", samplerVal, FontAwesome.SLIDERS);
+        samplerCard.setPrefWidth(180);
         VBox schedulerCard = createStatCard("Scheduler", schedulerVal, FontAwesome.CLOCK_O);
+        schedulerCard.setPrefWidth(180);
         stepsCard.setMinWidth(Region.USE_PREF_SIZE);
         cfgCard.setMinWidth(Region.USE_PREF_SIZE);
         seedCard.setMinWidth(Region.USE_PREF_SIZE);
-        HBox.setHgrow(seedCard, Priority.NEVER);
-        HBox.setHgrow(samplerCard, Priority.ALWAYS);
-        HBox.setHgrow(schedulerCard, Priority.ALWAYS);
-        HBox row2 = new HBox(12, stepsCard, cfgCard, seedCard, samplerCard, schedulerCard);
+        FlowPane row2 = new FlowPane(12, 12, stepsCard, cfgCard, seedCard, samplerCard, schedulerCard);
 
         VBox sizeCard = createStatCard("Size", sizeVal, FontAwesome.IMAGE);
+        sizeCard.setPrefWidth(180);
         VBox denoiseCard = createStatCard("Denoise", denoiseVal, FontAwesome.TINT);
+        denoiseCard.setPrefWidth(180);
         VBox hiresCard = createStatCard("Hires. fix", hiresFixVal, FontAwesome.EXPAND);
-        HBox row3 = new HBox(12, sizeCard, denoiseCard, hiresCard);
-        HBox.setHgrow(sizeCard, Priority.ALWAYS);
-        HBox.setHgrow(denoiseCard, Priority.ALWAYS);
-        HBox.setHgrow(hiresCard, Priority.ALWAYS);
+        hiresCard.setPrefWidth(180);
+        FlowPane row3 = new FlowPane(12, 12, sizeCard, denoiseCard, hiresCard);
 
         lorasVal.setEditable(false);
         lorasVal.setWrapText(true);
@@ -144,6 +144,21 @@ public class ExtractorView extends ScrollPane {
         title.getStyleClass().add("content-title");
 
         container.getChildren().addAll(title, mainSplit);
+
+        // Below the breakpoint, move metadataPanel out of the HBox and into the
+        // outer VBox so it stacks under the image (full-width) instead of being
+        // squeezed side-by-side until content is clipped past the window edge.
+        Runnable applyResponsiveLayout = () -> {
+            boolean narrow = this.getWidth() > 0 && this.getWidth() < RESPONSIVE_BREAKPOINT;
+            if (narrow && mainSplit.getChildren().contains(metadataPanel)) {
+                mainSplit.getChildren().remove(metadataPanel);
+                container.getChildren().add(metadataPanel);
+            } else if (!narrow && !mainSplit.getChildren().contains(metadataPanel)) {
+                container.getChildren().remove(metadataPanel);
+                mainSplit.getChildren().add(metadataPanel);
+            }
+        };
+        this.widthProperty().addListener((obs, oldW, newW) -> applyResponsiveLayout.run());
 
         StackPane root = new StackPane(container);
         toast.getStyleClass().add("toast");
@@ -168,6 +183,20 @@ public class ExtractorView extends ScrollPane {
         measure.setFont(STAT_VALUE_FONT);
         double width = measure.getLayoutBounds().getWidth() + 24;
         field.setPrefWidth(Math.max(minWidth, width));
+    }
+
+    /**
+     * Grows a prompt TextArea to fit its wrapped content, up to maxHeight —
+     * beyond that the TextArea's own built-in scrollbar takes over instead of
+     * pushing the rest of the page further down indefinitely.
+     */
+    private static void autoSizeTextArea(TextArea area, double minHeight, double maxHeight) {
+        double wrapWidth = area.getWidth() > 0 ? area.getWidth() - 24 : 500;
+        Text measure = new Text(area.getText());
+        measure.setFont(area.getFont());
+        measure.setWrappingWidth(Math.max(wrapWidth, 50));
+        double contentHeight = measure.getLayoutBounds().getHeight() + 24;
+        area.setPrefHeight(Math.min(maxHeight, Math.max(minHeight, contentHeight)));
     }
 
     private static void flashToast(Label toastLabel, String message) {
@@ -439,6 +468,8 @@ public class ExtractorView extends ScrollPane {
 
             promptText.setText(lastData.getOrDefault("Prompt", ""));
             negativePromptText.setText(lastData.getOrDefault("Negative", "None"));
+            autoSizeTextArea(promptText, 100, 320);
+            autoSizeTextArea(negativePromptText, 60, 320);
 
             modelVal.setText(lastData.getOrDefault("Model", "N/A"));
             softwareVal.setText(lastData.getOrDefault("Software", "Unknown"));
@@ -465,6 +496,7 @@ public class ExtractorView extends ScrollPane {
         extractionTask.setOnFailed(e -> {
             Throwable ex = extractionTask.getException();
             promptText.setText("Error reading file: " + (ex != null ? ex.getMessage() : "Unknown error"));
+            autoSizeTextArea(promptText, 100, 320);
             modelVal.setText("Error");
             if (this.getScene() != null) {
                 this.getScene().setCursor(javafx.scene.Cursor.DEFAULT);

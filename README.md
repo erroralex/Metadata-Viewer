@@ -46,6 +46,7 @@ A high-performance JavaFX desktop application designed to inspect and extract ge
   * **Fullscreen Preview:** Click any image for a modal, high-res inspection view.
   * **Raw Inspector:** Debug non-standard outputs with a raw text/JSON inspection modal, with one-click copy.
   * **Copy Feedback:** Prompt and raw-metadata copy actions confirm with a toast instead of a silent clipboard write.
+  * **Responsive Layout:** The metadata panel reflows underneath the image on narrower windows instead of clipping, and stat cards wrap to fit. Prompt boxes grow to fit their content, up to a cap, then scroll internally.
 * **Lightweight & Cross-Platform:** Programmatic JavaFX (No FXML) with zero startup lag and cross-platform build support.
 
 ---
