@@ -101,17 +101,17 @@ jobs:
       # cache on first run and launches straight from cache after that, with
       # no UI, no console, and no admin elevation. Linux/macOS keep the
       # zipped folder — this was a Windows-specific report.
+      # Runs under pwsh, not bash: windows-latest ships NSIS 3.10 on the
+      # default (PowerShell/cmd) PATH already, but git-bash's PATH translation
+      # doesn't reliably see it, which is what broke the first attempt at this
+      # step (IfFileExists syntax was also wrong on that run — fixed
+      # separately, but staying on pwsh here removes the PATH guesswork too).
       - name: Pack into single-file exe (NSIS)
         if: runner.os == 'Windows'
-        shell: bash
+        shell: pwsh
         run: |
-          mkdir -p release
-          # windows-latest runners ship NSIS already; only install it if it's missing.
-          if ! command -v makensis >/dev/null 2>&1; then
-            choco install nsis --no-progress -y
-          fi
-          command -v makensis >/dev/null 2>&1 && MAKENSIS=makensis || MAKENSIS="/c/Program Files (x86)/NSIS/makensis.exe"
-          "$MAKENSIS" packaging/windows-portable.nsi
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          makensis packaging\windows-portable.nsi
 
       - name: Zip app image
         if: runner.os != 'Windows'
