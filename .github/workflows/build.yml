@@ -113,6 +113,9 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
+          Write-Host "PWD: $(Get-Location)"
+          Write-Host "dist contents:"
+          Get-ChildItem -Path dist -Recurse -ErrorAction SilentlyContinue | Select-Object -First 20 FullName | Format-Table -AutoSize
           choco install nsis --no-progress -y
           $makensis = Get-ChildItem -Path "C:\Program Files*\NSIS*" -Filter makensis.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
           if (-not $makensis) { throw "makensis.exe not found after installing NSIS" }
