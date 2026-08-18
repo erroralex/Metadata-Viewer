@@ -63,7 +63,7 @@ A high-performance JavaFX desktop application designed to inspect and extract ge
 
 Grab the latest standalone build for your OS from the [Releases](https://github.com/erroralex/Metadata-Viewer/releases) page — no Java installation required.
 
-* **Windows:** download `MetadataViewer-windows.exe` and run it directly — it's a single self-contained file.
+* **Windows:** download the `MetadataViewer-windows-<version>.exe` asset and run it directly — it's a single self-contained file.
 * **macOS / Linux:** download the `.zip` for your OS, extract it (a real "Extract All", not just browsing into the zip), and run the app from inside the extracted folder.
 
 Building from source instead? See [CONTRIBUTING.md](CONTRIBUTING.md).
