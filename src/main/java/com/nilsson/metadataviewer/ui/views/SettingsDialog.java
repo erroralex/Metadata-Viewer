@@ -16,7 +16,7 @@ import java.net.URI;
 
 public class SettingsDialog {
 
-    private static final String VERSION = "1.1.0";
+    private static final String VERSION = versionOrDefault();
     private static final String SPONSOR_GITHUB_URL = "https://github.com/sponsors/erroralex";
     private static final String SPONSOR_KOFI_URL = "https://ko-fi.com/error_alex";
 
@@ -78,6 +78,11 @@ public class SettingsDialog {
 
         dialog.setOnShowing(e -> pane.getScene().setFill(Color.TRANSPARENT));
         dialog.showAndWait();
+    }
+
+    private static String versionOrDefault() {
+        String version = SettingsDialog.class.getPackage().getImplementationVersion();
+        return version != null ? version : "dev";
     }
 
     private static void openLink(String url) {

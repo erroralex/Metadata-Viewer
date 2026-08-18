@@ -20,10 +20,15 @@
 !ifndef ICON_PATH
   !error "ICON_PATH must be defined, e.g. /DICON_PATH=C:\path\to\src\main\resources\icon.ico"
 !endif
+!ifndef APP_VERSION
+  !error "APP_VERSION must be defined, e.g. /DAPP_VERSION=1.2.1"
+!endif
 
 !define APP_NAME "MetadataViewer"
 !define APP_EXE "MetadataViewer.exe"
-!define CACHE_DIR "$LOCALAPPDATA\MetadataViewerPortable"
+; Versioned so a new release's exe always extracts into its own cache folder
+; instead of silently launching whatever version got cached there first.
+!define CACHE_DIR "$LOCALAPPDATA\MetadataViewerPortable\${APP_VERSION}"
 
 Name "${APP_NAME}"
 Icon "${ICON_PATH}"
