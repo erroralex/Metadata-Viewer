@@ -17,12 +17,16 @@
 !ifndef OUT_FILE
   !error "OUT_FILE must be defined, e.g. /DOUT_FILE=C:\path\to\release\MetadataViewer-windows.exe"
 !endif
+!ifndef ICON_PATH
+  !error "ICON_PATH must be defined, e.g. /DICON_PATH=C:\path\to\src\main\resources\icon.ico"
+!endif
 
 !define APP_NAME "MetadataViewer"
 !define APP_EXE "MetadataViewer.exe"
 !define CACHE_DIR "$LOCALAPPDATA\MetadataViewerPortable"
 
 Name "${APP_NAME}"
+Icon "${ICON_PATH}"
 OutFile "${OUT_FILE}"
 SilentInstall silent
 RequestExecutionLevel user

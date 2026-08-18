@@ -5,6 +5,14 @@ This document tracks recent changes, current context, and next steps for AI and 
 
 ## Recent Changes
 
+### v1.2.0 release icon bugs (found by the user comparing the actual downloaded release against the app)
+- **Desktop/taskbar shortcut icon was generic, not the MV monogram.** Root cause: `packaging/windows-portable.nsi` (the NSIS wrapper that packs the jpackage app-image into the single-file `MetadataViewer-windows.exe`) never had an `Icon` directive, so NSIS fell back to its own default installer icon regardless of what `jpackage --icon` embedded inside. Fixed by adding a required `ICON_PATH` define (`!ifndef` guard, same pattern as `SRC_DIR`/`OUT_FILE`) and `Icon "${ICON_PATH}"` in the script, with `.github/workflows/build.yml`'s Windows packaging step now passing `/DICON_PATH=<abs path>\src\main\resources\icon.ico`.
+- Separately confirmed: `src/main/resources/icon.ico`/`icon.png` themselves are correct and already contain the current MV monogram (updated in `a5d3c69`) — this was purely the NSIS wrapper missing the flag, not a stale/wrong source asset. Verified by extracting frames from the committed `.ico` via `System.Drawing.Icon` in PowerShell.
+- **Why the released v1.2.0 exe still looked stale even on the icon it did have:** that release was published at 18:17 UTC, over an hour *before* the `a5d3c69` icon-update commit at 19:44 UTC the same day — the release simply predates the current brand mark. A re-tag/re-release is needed to ship both this NSIS fix and the current icon (see Next Steps).
+- **Titlebar brand mark now renders from `icon.png` directly** instead of a hand-drawn `SVGPath` "M" glyph + separate `.title-mark` CSS gradient square (`CustomTitleBar.createBrandMark()`). The user wanted the titlebar icon to be pixel-identical to the taskbar icon, not a lookalike vector redraw — an `ImageView` scaled to 20x20 guarantees that by construction. The old `.title-mark` CSS rule was removed as dead code.
+- Titlebar app-name label is now `-fx-font-weight: bold` (was `600`) per user request.
+- Verified all of the above by running the app through IntelliJ's `MetadataApp` run configuration and screenshotting the live titlebar (PowerShell `System.Drawing` window capture, since this is a native desktop window, not a browser).
+
 ### The Latent rework (design: `docs/latent-rework-2026-08-16.md`, plan: `docs/superpowers/plans/2026-08-16-latent-rework-implementation-plan.md`)
 - Removed Favorites, Metadata Scrubber, and Speed Sorter — they now live in Latent Library (`C:\Users\error\IdeaProjects\Projects\Latent-Library`). Removed the sidebar navigation shell (`RootLayout`, `SideNavigation`); the app is now a single-screen extractor hosted directly by `MetadataApp`.
 - Ported the metadata-parsing engine (`MetadataService`, `TextParamsParser`, and the 5 `MetadataStrategy` implementations) from Latent-Library's Spring Boot backend, stripped of Spring. `ComfyUIStrategy` gained full node-graph traversal and custom-node support, plus several new result fields (`Scheduler`, `Denoise`, `Hires. fix`, `Model Hash`, `Distilled CFG`, `ControlNet`) — though Model Hash/ControlNet are A1111/Forge-only in practice (see Known issues).
@@ -30,6 +38,21 @@ This document tracks recent changes, current context, and next steps for AI and 
 - Release notes (`docs/release-notes.v1.2.0.md`) have no em dashes or AI-attribution phrasing per user request — keep future edits to that file consistent with that style.
 
 ## Known issues / needs attention
+- **This app has no SVG asset pipeline**, unlike Latent Library, Latent Tools, and Latent Model
+  Organizer. `MetadataApp.java`'s `Stage.getIcons()` and the `jpackage --icon` flag in
+  `Package CMD.md` both consume rasterized files only (`src/main/resources/icon.png`, `icon.ico`).
+  A brand-mark update here means delivering a pre-rendered PNG (1024x1024) and a multi-res ICO
+  (16/24/32/48/64/72/96/128/256, matching the existing set) rather than dropping in an SVG like the
+  sibling apps.
+- **Closing the app calls `System.exit(0)` directly** (`MetadataApp.java` close-button callback,
+  `() -> System.exit(0)` passed into `CustomTitleBar`), which skips JavaFX's normal `Platform.exit()`
+  shutdown sequence and kills the process mid-frame. This is a plausible cause of native JVM crashes
+  on close (Direct3D/Prism pipeline torn down abruptly, worse with this app's undecorated/transparent
+  stages) — the user reported IntelliJ appearing to crash/hang when closing the app run through its
+  run configuration. Not yet fixed; the `primaryStage.close()` line right after `System.exit(0)` in
+  `CustomTitleBar`'s close handler is dead code since `System.exit` never returns. Fix is to drop
+  `System.exit(0)` entirely and rely on `primaryStage.close()` + JavaFX's default implicit-exit
+  behavior (closing the last window already shuts the runtime down cleanly).
 - The `data/` directory (`data/favorites/`, `data/settings.json`) still exists on disk from before this rework and is still tracked in git, but nothing in the app reads or writes it anymore. Still needs a decision on whether to remove it from git.
 - Model Hash and ControlNet extraction is A1111/Forge-only; other sources only show them via the Raw Metadata inspector, not as dedicated cards. `ComfyUIStrategy` could be taught to extract these from its node graph if that's ever wanted.
 - The macOS build has no custom app icon yet (`icon.icns` doesn't exist; ships with jpackage's default).
@@ -37,6 +60,8 @@ This document tracks recent changes, current context, and next steps for AI and 
 - **Unverified by an actual human yet:** the NSIS-packed Windows exe (no console window claim, first-run-extract vs. cached-launch behavior), and the 720px responsive breakpoint / 320px prompt auto-grow cap "feeling right" in practice. The `v1.2.0` release itself has been built successfully by CI and its assets confirmed present, but nobody has run the actual downloaded files yet.
 
 ## Next Steps
-- Download and run `MetadataViewer-windows.exe` from the `v1.2.0` release twice in a row (confirm no console window, cache behavior on second run) and drop in a real image with a long prompt to sanity-check the responsive/auto-grow behavior.
+- **Cut a new tagged release** so the NSIS icon fix and the current MV monogram actually ship — `v1.2.0` predates both. Follow the existing release-tag conventions ([[feedback_release-conventions]]).
+- Fix the `System.exit(0)`-on-close crash risk described above (swap for plain `primaryStage.close()`), ideally with a manual close-then-reopen check under IntelliJ's run configuration to confirm no more crash/hang.
+- Download and run the new release's `MetadataViewer-windows.exe` twice in a row (confirm no console window, cache behavior on second run, and that the desktop/taskbar shortcut now shows the MV icon) and drop in a real image with a long prompt to sanity-check the responsive/auto-grow behavior.
 - Consider adding `src/main/resources/icon.icns` for a real macOS app icon.
 - Consider whether `ComfyUIStrategy`'s dropped custom-node-name feature is worth reintroducing via a minimal local settings file, if users ask for it.
