@@ -116,6 +116,7 @@ jobs:
           $workspace = (Get-Location).Path
           $srcDir = Join-Path $workspace "dist\MetadataViewer"
           $outFile = Join-Path $workspace "release\MetadataViewer-windows.exe"
+          $iconPath = Join-Path $workspace "src\main\resources\icon.ico"
           choco install nsis --no-progress -y
           $makensis = Get-ChildItem -Path "C:\Program Files*\NSIS*" -Filter makensis.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
           if (-not $makensis) { throw "makensis.exe not found after installing NSIS" }
@@ -129,8 +130,8 @@ jobs:
             Get-ChildItem -Path $workspace -ErrorAction SilentlyContinue | Format-Table -AutoSize
             throw "$srcDir\MetadataViewer.exe missing right before makensis runs"
           }
-          Write-Host "Using $makensis, SRC_DIR=$srcDir, OUT_FILE=$outFile"
-          & $makensis "/DSRC_DIR=$srcDir" "/DOUT_FILE=$outFile" packaging\windows-portable.nsi
+          Write-Host "Using $makensis, SRC_DIR=$srcDir, OUT_FILE=$outFile, ICON_PATH=$iconPath"
+          & $makensis "/DSRC_DIR=$srcDir" "/DOUT_FILE=$outFile" "/DICON_PATH=$iconPath" packaging\windows-portable.nsi
 
       - name: Zip app image
         if: runner.os != 'Windows'

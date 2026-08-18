@@ -74,18 +74,9 @@
     -fx-border-width:     0 0 2 0;
 }
 
-.title-mark {
-    -fx-background-color:  linear-gradient(to bottom right, #67E0D8 0%, #9B7EF5 100%); /* BrandMark.jsx gradient */
-    -fx-background-radius: 6px;
-    -fx-min-width:          20;
-    -fx-min-height:         20;
-    -fx-max-width:          20;
-    -fx-max-height:         20;
-}
-
 .title-label {
     -fx-text-fill:   -app-text-primary;
-    -fx-font-weight: 600;
+    -fx-font-weight: bold;
     -fx-font-size:   13px;
     -fx-padding:     0 0 0 10;
 }
