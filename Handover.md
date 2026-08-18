@@ -5,6 +5,13 @@ This document tracks recent changes, current context, and next steps for AI and 
 
 ## Recent Changes
 
+### Dev-credit logo swapped for the real design-system asset
+- `src/main/resources/alx_logo.png` was a flat solid-purple version of the "ALX" wordmark, not the
+  gradient version the design system and sibling apps actually use. Replaced it with the canonical file
+  from `C:\Users\error\IdeaProjects\Projects\Latent-Design-System\assets\alx_logo.png` (teal-to-purple
+  gradient, matching `Latent-Tools`/`Latent-Library`'s `sidebar-footer-logo`). No code changes needed —
+  `DevCredit.java` already just loads `/alx_logo.png` from the classpath.
+
 ### Clickable dropzone, dev-credit corner logo, and a real branch-drift bug
 - The image dropzone in `ExtractorView` now opens a `FileChooser` (filtered to `png`/`jpg`/`jpeg`/`webp`)
   when clicked while empty, in addition to drag-and-drop. `setupImageArea()`'s click handler now branches:
