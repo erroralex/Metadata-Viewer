@@ -10,7 +10,7 @@ We welcome contributions! Please follow these guidelines.
 
 2. **Build & Run:**
     * `mvn clean package`
-    * `java -jar target/MetadataViewer-1.2.0.jar`
+    * `java -jar target/MetadataViewer-1.2.1.jar`
     * Run tests with `mvn test`
 
 3. **Standalone native build (optional):** the release workflow (`.github/workflows/build.yml`) packages the jar into a

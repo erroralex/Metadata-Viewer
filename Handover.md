@@ -5,6 +5,14 @@ This document tracks recent changes, current context, and next steps for AI and 
 
 ## Recent Changes
 
+### v1.2.1: icon fixes released
+- Bumped `pom.xml` to `1.2.1` (non-SNAPSHOT) and updated the jar-filename references in `AGENTS.md`,
+  `CONTRIBUTING.md`, and `Package CMD.md` to match, per the versioning convention from the v1.2.0 release.
+- Added `docs/release-notes.v1.2.1.md` covering the NSIS icon fix, the titlebar brand-mark change, and the
+  bold title — same no-em-dash, no-AI-attribution style as `v1.2.0`'s notes.
+- Tagged and pushed `v1.2.1` to trigger the release workflow; this ships the fixes described in the
+  "v1.2.0 release icon bugs" section below, since `v1.2.0` itself predates all of them.
+
 ### v1.2.0 release icon bugs (found by the user comparing the actual downloaded release against the app)
 - **Desktop/taskbar shortcut icon was generic, not the MV monogram.** Root cause: `packaging/windows-portable.nsi` (the NSIS wrapper that packs the jpackage app-image into the single-file `MetadataViewer-windows.exe`) never had an `Icon` directive, so NSIS fell back to its own default installer icon regardless of what `jpackage --icon` embedded inside. Fixed by adding a required `ICON_PATH` define (`!ifndef` guard, same pattern as `SRC_DIR`/`OUT_FILE`) and `Icon "${ICON_PATH}"` in the script, with `.github/workflows/build.yml`'s Windows packaging step now passing `/DICON_PATH=<abs path>\src\main\resources\icon.ico`.
 - Separately confirmed: `src/main/resources/icon.ico`/`icon.png` themselves are correct and already contain the current MV monogram (updated in `a5d3c69`) — this was purely the NSIS wrapper missing the flag, not a stale/wrong source asset. Verified by extracting frames from the committed `.ico` via `System.Drawing.Icon` in PowerShell.
@@ -60,8 +68,10 @@ This document tracks recent changes, current context, and next steps for AI and 
 - **Unverified by an actual human yet:** the NSIS-packed Windows exe (no console window claim, first-run-extract vs. cached-launch behavior), and the 720px responsive breakpoint / 320px prompt auto-grow cap "feeling right" in practice. The `v1.2.0` release itself has been built successfully by CI and its assets confirmed present, but nobody has run the actual downloaded files yet.
 
 ## Next Steps
-- **Cut a new tagged release** so the NSIS icon fix and the current MV monogram actually ship — `v1.2.0` predates both. Follow the existing release-tag conventions ([[feedback_release-conventions]]).
+- Confirm the `v1.2.1` CI run finished green and its release assets are present, then set the GitHub
+  release body from `docs/release-notes.v1.2.1.md` (the workflow itself doesn't wire notes into the
+  release automatically; that's a manual `gh release edit` step, same as `v1.2.0`).
 - Fix the `System.exit(0)`-on-close crash risk described above (swap for plain `primaryStage.close()`), ideally with a manual close-then-reopen check under IntelliJ's run configuration to confirm no more crash/hang.
-- Download and run the new release's `MetadataViewer-windows.exe` twice in a row (confirm no console window, cache behavior on second run, and that the desktop/taskbar shortcut now shows the MV icon) and drop in a real image with a long prompt to sanity-check the responsive/auto-grow behavior.
+- Download and run the `v1.2.1` `MetadataViewer-windows.exe` twice in a row (confirm no console window, cache behavior on second run, and that the desktop/taskbar shortcut now shows the MV icon) and drop in a real image with a long prompt to sanity-check the responsive/auto-grow behavior.
 - Consider adding `src/main/resources/icon.icns` for a real macOS app icon.
 - Consider whether `ComfyUIStrategy`'s dropped custom-node-name feature is worth reintroducing via a minimal local settings file, if users ask for it.

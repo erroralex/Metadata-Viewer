@@ -8,7 +8,7 @@
 - **Stack:** Java 21 / JavaFX 21 (programmatic UI, no FXML) / Jackson (JSON persistence) / metadata-extractor / Ikonli-FontAwesome / Maven (no wrapper)
 - **Build:** `mvn clean package`
 - **Test:** no automated tests yet
-- **Run locally:** `java -jar target/MetadataViewer-1.2.0.jar` (built by `mvn package`, shaded jar, main class `com.nilsson.metadataviewer.Launcher`)
+- **Run locally:** `java -jar target/MetadataViewer-1.2.1.jar` (built by `mvn package`, shaded jar, main class `com.nilsson.metadataviewer.Launcher`)
 
 ## Workflow
 
