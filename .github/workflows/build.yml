@@ -117,7 +117,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path release | Out-Null
           $workspace = (Get-Location).Path
           $srcDir = Join-Path $workspace "dist\MetadataViewer"
-          $outFile = Join-Path $workspace "release\MetadataViewer-windows.exe"
+          $outFile = Join-Path $workspace "release\MetadataViewer-windows-$env:APP_VERSION.exe"
           $iconPath = Join-Path $workspace "src\main\resources\icon.ico"
           choco install nsis --no-progress -y
           $makensis = Get-ChildItem -Path "C:\Program Files*\NSIS*" -Filter makensis.exe -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
@@ -140,7 +140,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p release
-          zip_name="release/MetadataViewer-${{ matrix.asset_suffix }}.zip"
+          zip_name="release/MetadataViewer-${{ matrix.asset_suffix }}-${{ steps.version.outputs.app_version }}.zip"
           cd dist
           zip -r "../$zip_name" .
 

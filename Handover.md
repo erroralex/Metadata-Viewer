@@ -5,6 +5,22 @@ This document tracks recent changes, current context, and next steps for AI and 
 
 ## Recent Changes
 
+### v1.2.3: versioned release asset filenames
+- Every release used to upload the exact same filenames each time (`MetadataViewer-windows.exe`,
+  `MetadataViewer-macos.zip`, `MetadataViewer-linux.zip`), matching neither this session's later finding
+  that reused filenames feed Windows' path-keyed icon cache (see v1.2.2 below) nor the naming convention
+  the user's other Latent apps use (electron-builder's default artifact naming, e.g.
+  `Latent.Model.Organizer.1.3.0.exe` — GitHub itself converts the spaces in that default `${productName}
+  ${version}.${ext}` template to dots on upload, since asset filenames can't contain spaces).
+- `.github/workflows/build.yml` now names the Windows exe `MetadataViewer-windows-<version>.exe` and the
+  macOS/Linux zips `MetadataViewer-<macos|linux>-<version>.zip`, reusing the `app_version` output already
+  computed by the "Read project version" step. Kept the existing hyphenated house style (matches the jar
+  filename convention, e.g. `MetadataViewer-1.2.3.jar`) rather than adopting spaces-to-dots literally,
+  since our filenames are hyphen-only from the start.
+- Updated `README.md`'s install instructions to say `MetadataViewer-windows-<version>.exe` instead of a
+  hardcoded, now-stale exact filename.
+- Packaging-only change, no app behavior changed — see `docs/release-notes.v1.2.3.md`.
+
 ### v1.2.2: portable exe cache bug and stale About version
 - **Root cause of v1.2.1 still showing the old icon/version after install:** `packaging/windows-portable.nsi`'s
   cache folder (`%LOCALAPPDATA%\MetadataViewerPortable\`) was shared across every version — the
@@ -91,10 +107,11 @@ This document tracks recent changes, current context, and next steps for AI and 
 - **Unverified by an actual human yet:** the NSIS-packed Windows exe (no console window claim, first-run-extract vs. cached-launch behavior), and the 720px responsive breakpoint / 320px prompt auto-grow cap "feeling right" in practice. The `v1.2.0` release itself has been built successfully by CI and its assets confirmed present, but nobody has run the actual downloaded files yet.
 
 ## Next Steps
-- Confirm the `v1.2.2` CI run finished green and its release assets are present, then set the GitHub
-  release body from `docs/release-notes.v1.2.2.md` (the workflow itself doesn't wire notes into the
-  release automatically; that's a manual `gh release edit` step, same as prior releases).
+- Confirm the `v1.2.3` CI run finished green and its release assets are present with the new versioned
+  filenames (`MetadataViewer-windows-1.2.3.exe` etc.), then set the GitHub release body from
+  `docs/release-notes.v1.2.3.md` (the workflow itself doesn't wire notes into the release automatically;
+  that's a manual `gh release edit` step, same as prior releases).
 - Fix the `System.exit(0)`-on-close crash risk described above (swap for plain `primaryStage.close()`), ideally with a manual close-then-reopen check under IntelliJ's run configuration to confirm no more crash/hang.
-- Download and run the `v1.2.2` `MetadataViewer-windows.exe` twice in a row (confirm no console window, per-version cache extracting correctly, and that the desktop/taskbar shortcut and About dialog now show the current icon/version) and drop in a real image with a long prompt to sanity-check the responsive/auto-grow behavior.
+- Download and run the `v1.2.3` Windows exe twice in a row (confirm no console window, per-version cache extracting correctly, and that the desktop/taskbar shortcut and About dialog now show the current icon/version) and drop in a real image with a long prompt to sanity-check the responsive/auto-grow behavior.
 - Consider adding `src/main/resources/icon.icns` for a real macOS app icon.
 - Consider whether `ComfyUIStrategy`'s dropped custom-node-name feature is worth reintroducing via a minimal local settings file, if users ask for it.
