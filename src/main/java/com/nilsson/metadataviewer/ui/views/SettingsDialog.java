@@ -3,8 +3,6 @@ package com.nilsson.metadataviewer.ui.views;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
-import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -40,14 +38,6 @@ public class SettingsDialog {
         content.setAlignment(Pos.CENTER);
         content.setPrefWidth(320);
 
-        ImageView logoView = new ImageView();
-        if (SettingsDialog.class.getResource("/alx_logo.png") != null) {
-            logoView.setImage(new Image(SettingsDialog.class.getResource("/alx_logo.png").toExternalForm()));
-        }
-        logoView.setFitWidth(120);
-        logoView.setPreserveRatio(true);
-        logoView.setSmooth(true);
-
         Label appName = new Label("Metadata Viewer");
         appName.getStyleClass().add("app-title");
 
@@ -73,7 +63,7 @@ public class SettingsDialog {
 
         links.getChildren().addAll(sponsorGithubBtn, sponsorKofiBtn);
 
-        content.getChildren().addAll(logoView, appName, version, movedNote, links);
+        content.getChildren().addAll(appName, version, movedNote, links);
         pane.setContent(content);
 
         dialog.setOnShowing(e -> pane.getScene().setFill(Color.TRANSPARENT));
