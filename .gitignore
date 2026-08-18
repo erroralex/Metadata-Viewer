@@ -42,3 +42,6 @@ build/
 ### AI assistant setup ###
 .claude/skills/
 drop-in-brain-main/
+
+### Local-only docs ###
+/docs
