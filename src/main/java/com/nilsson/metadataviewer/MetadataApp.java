@@ -1,14 +1,18 @@
 package com.nilsson.metadataviewer;
 
 import com.nilsson.metadataviewer.ui.CustomTitleBar;
+import com.nilsson.metadataviewer.ui.DevCredit;
 import com.nilsson.metadataviewer.ui.ResizeHelper;
 import com.nilsson.metadataviewer.ui.views.ExtractorView;
 import com.nilsson.metadataviewer.ui.views.SettingsDialog;
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.HBox;
 import javafx.stage.Screen;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -33,9 +37,14 @@ public class MetadataApp extends Application {
                     () -> SettingsDialog.show(primaryStage)
             );
 
+            HBox footer = new HBox(DevCredit.create());
+            footer.setAlignment(Pos.BOTTOM_LEFT);
+            footer.setPadding(new Insets(0, 0, 8, 15));
+
             BorderPane mainWrapper = new BorderPane();
             mainWrapper.setTop(titleBar);
             mainWrapper.setCenter(extractorView);
+            mainWrapper.setBottom(footer);
 
             Rectangle2D screenBounds = Screen.getPrimary().getVisualBounds();
             double appWidth = Math.min(TARGET_WIDTH, screenBounds.getWidth() * 0.90);

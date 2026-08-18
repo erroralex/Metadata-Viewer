@@ -16,6 +16,7 @@ import javafx.scene.input.ClipboardContent;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
@@ -222,7 +223,7 @@ public class ExtractorView extends ScrollPane {
 
         FontIcon icon = new FontIcon(FontAwesome.CLOUD_UPLOAD);
         icon.setIconSize(32);
-        Label dropLabel = new Label("Drop Image Here");
+        Label dropLabel = new Label("Drop Image Here or Click to Browse");
         dropLabel.setStyle("-fx-text-fill: -app-text-muted; -fx-font-size: 14px;");
         dropHint.setAlignment(Pos.CENTER);
         dropHint.getChildren().addAll(icon, dropLabel);
@@ -239,6 +240,8 @@ public class ExtractorView extends ScrollPane {
         imageArea.setOnMouseClicked(e -> {
             if (lastFile != null && lastFile.exists()) {
                 showFullScreenImage(lastFile);
+            } else {
+                openFilePicker();
             }
         });
 
@@ -259,6 +262,18 @@ public class ExtractorView extends ScrollPane {
             imageArea.getStyleClass().remove("drop-zone-active");
             e.consume();
         });
+    }
+
+    private void openFilePicker() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Select an Image");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter(
+                "Images", "*.png", "*.jpg", "*.jpeg", "*.webp"));
+
+        File selected = chooser.showOpenDialog(this.getScene() != null ? this.getScene().getWindow() : null);
+        if (selected != null) {
+            process(selected);
+        }
     }
 
     private void showFullScreenImage(File file) {
