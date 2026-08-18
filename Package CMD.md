@@ -1,10 +1,10 @@
 jpackage ^
 --input staging ^
 --name "MetadataViewer" ^
---main-jar MetadataViewer-1.2.1.jar ^
+--main-jar MetadataViewer-1.2.2.jar ^
 --main-class com.nilsson.metadataviewer.Launcher ^
 --type app-image ^
 --icon src/main/resources/icon.ico ^
---app-version 1.2.1 ^
+--app-version 1.2.2 ^
 --vendor "Alexander Nilsson" ^
 --add-modules java.se,jdk.unsupported,jdk.charsets

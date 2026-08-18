@@ -111,6 +111,8 @@ jobs:
       - name: Pack into single-file exe (NSIS)
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          APP_VERSION: ${{ steps.version.outputs.app_version }}
         run: |
           New-Item -ItemType Directory -Force -Path release | Out-Null
           $workspace = (Get-Location).Path
@@ -130,8 +132,8 @@ jobs:
             Get-ChildItem -Path $workspace -ErrorAction SilentlyContinue | Format-Table -AutoSize
             throw "$srcDir\MetadataViewer.exe missing right before makensis runs"
           }
-          Write-Host "Using $makensis, SRC_DIR=$srcDir, OUT_FILE=$outFile, ICON_PATH=$iconPath"
-          & $makensis "/DSRC_DIR=$srcDir" "/DOUT_FILE=$outFile" "/DICON_PATH=$iconPath" packaging\windows-portable.nsi
+          Write-Host "Using $makensis, SRC_DIR=$srcDir, OUT_FILE=$outFile, ICON_PATH=$iconPath, APP_VERSION=$env:APP_VERSION"
+          & $makensis "/DSRC_DIR=$srcDir" "/DOUT_FILE=$outFile" "/DICON_PATH=$iconPath" "/DAPP_VERSION=$env:APP_VERSION" packaging\windows-portable.nsi
 
       - name: Zip app image
         if: runner.os != 'Windows'

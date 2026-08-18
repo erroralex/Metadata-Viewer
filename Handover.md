@@ -5,6 +5,25 @@ This document tracks recent changes, current context, and next steps for AI and 
 
 ## Recent Changes
 
+### v1.2.2: portable exe cache bug and stale About version
+- **Root cause of v1.2.1 still showing the old icon/version after install:** `packaging/windows-portable.nsi`'s
+  cache folder (`%LOCALAPPDATA%\MetadataViewerPortable\`) was shared across every version — the
+  `IfFileExists "${CACHE_DIR}\${APP_EXE}"` check only tested presence, not version, so once anything had
+  extracted there, all later launches (including a freshly downloaded v1.2.1) silently kept running the
+  stale cached copy and never re-extracted. Fixed by making `CACHE_DIR` version-scoped
+  (`%LOCALAPPDATA%\MetadataViewerPortable\${APP_VERSION}\`), with `APP_VERSION` threaded through from
+  `build.yml`'s existing `steps.version.outputs.app_version` the same way `ICON_PATH` was wired in for
+  v1.2.1.
+- **The About dialog's version string (`SettingsDialog.VERSION`) was hardcoded to `"1.1.0"`** and had
+  never been updated across v1.2.0 or v1.2.1. Fixed at the source instead of patching the string again:
+  `maven-shade-plugin`'s `ManifestResourceTransformer` now stamps `Implementation-Version` from
+  `${project.version}`, and `SettingsDialog` reads it via
+  `getClass().getPackage().getImplementationVersion()` (falls back to `"dev"` when run unpacked from the
+  IDE, where there's no jar manifest). This should never drift again on future version bumps.
+- Added `docs/release-notes.v1.2.2.md`, including a note for users upgrading from v1.2.1: if the desktop
+  shortcut icon still looks stale after installing, that's Windows' own icon cache for the filename, not
+  the app — right-click Refresh or re-login clears it.
+
 ### v1.2.1: icon fixes released
 - Bumped `pom.xml` to `1.2.1` (non-SNAPSHOT) and updated the jar-filename references in `AGENTS.md`,
   `CONTRIBUTING.md`, and `Package CMD.md` to match, per the versioning convention from the v1.2.0 release.
@@ -61,6 +80,10 @@ This document tracks recent changes, current context, and next steps for AI and 
   `CustomTitleBar`'s close handler is dead code since `System.exit` never returns. Fix is to drop
   `System.exit(0)` entirely and rely on `primaryStage.close()` + JavaFX's default implicit-exit
   behavior (closing the last window already shuts the runtime down cleanly).
+- **The portable exe's per-version cache folders are never cleaned up** — each new version now gets its
+  own `%LOCALAPPDATA%\MetadataViewerPortable\<version>\` (fixing the stale-launch bug), but old versions'
+  folders are left behind indefinitely. Low priority (a few hundred MB per stale version at most), but
+  worth a cleanup step (e.g. delete sibling version folders on launch) if this accumulates complaints.
 - The `data/` directory (`data/favorites/`, `data/settings.json`) still exists on disk from before this rework and is still tracked in git, but nothing in the app reads or writes it anymore. Still needs a decision on whether to remove it from git.
 - Model Hash and ControlNet extraction is A1111/Forge-only; other sources only show them via the Raw Metadata inspector, not as dedicated cards. `ComfyUIStrategy` could be taught to extract these from its node graph if that's ever wanted.
 - The macOS build has no custom app icon yet (`icon.icns` doesn't exist; ships with jpackage's default).
@@ -68,10 +91,10 @@ This document tracks recent changes, current context, and next steps for AI and 
 - **Unverified by an actual human yet:** the NSIS-packed Windows exe (no console window claim, first-run-extract vs. cached-launch behavior), and the 720px responsive breakpoint / 320px prompt auto-grow cap "feeling right" in practice. The `v1.2.0` release itself has been built successfully by CI and its assets confirmed present, but nobody has run the actual downloaded files yet.
 
 ## Next Steps
-- Confirm the `v1.2.1` CI run finished green and its release assets are present, then set the GitHub
-  release body from `docs/release-notes.v1.2.1.md` (the workflow itself doesn't wire notes into the
-  release automatically; that's a manual `gh release edit` step, same as `v1.2.0`).
+- Confirm the `v1.2.2` CI run finished green and its release assets are present, then set the GitHub
+  release body from `docs/release-notes.v1.2.2.md` (the workflow itself doesn't wire notes into the
+  release automatically; that's a manual `gh release edit` step, same as prior releases).
 - Fix the `System.exit(0)`-on-close crash risk described above (swap for plain `primaryStage.close()`), ideally with a manual close-then-reopen check under IntelliJ's run configuration to confirm no more crash/hang.
-- Download and run the `v1.2.1` `MetadataViewer-windows.exe` twice in a row (confirm no console window, cache behavior on second run, and that the desktop/taskbar shortcut now shows the MV icon) and drop in a real image with a long prompt to sanity-check the responsive/auto-grow behavior.
+- Download and run the `v1.2.2` `MetadataViewer-windows.exe` twice in a row (confirm no console window, per-version cache extracting correctly, and that the desktop/taskbar shortcut and About dialog now show the current icon/version) and drop in a real image with a long prompt to sanity-check the responsive/auto-grow behavior.
 - Consider adding `src/main/resources/icon.icns` for a real macOS app icon.
 - Consider whether `ComfyUIStrategy`'s dropped custom-node-name feature is worth reintroducing via a minimal local settings file, if users ask for it.
