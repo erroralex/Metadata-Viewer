@@ -161,8 +161,8 @@ This document tracks recent changes, current context, and next steps for AI and 
   the titlebar/taskbar icon is the current MV monogram (not the old "ME"), the dropzone opens a file
   picker when clicked empty, the lower-left dev-credit logo fades in on hover and opens
   `github.com/erroralex`, and Settings no longer shows a big logo.
-- Confirm the `v1.2.4` CI run finished green and its release assets are present, then set the GitHub
-  release body from `docs/release-notes.v1.2.4.md` (manual `gh release edit` step, same as prior releases).
+- ~~Confirm the `v1.2.4` CI run finished green...~~ Done: all three platform builds succeeded, assets
+  uploaded, and the release title/notes were set from `docs/release-notes.v1.2.4.md` via `gh release edit`.
 - Fix the `System.exit(0)`-on-close crash risk described above (swap for plain `primaryStage.close()`), ideally with a manual close-then-reopen check under IntelliJ's run configuration to confirm no more crash/hang.
 - Download and run the `v1.2.4` Windows exe twice in a row (confirm no console window, per-version cache extracting correctly, and that the desktop/taskbar shortcut and About dialog now show the current icon/version) and drop in a real image with a long prompt to sanity-check the responsive/auto-grow behavior.
 - Consider adding `src/main/resources/icon.icns` for a real macOS app icon.
