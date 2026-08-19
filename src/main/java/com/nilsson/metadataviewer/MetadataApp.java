@@ -38,6 +38,7 @@ public class MetadataApp extends Application {
             );
 
             HBox footer = new HBox(DevCredit.create());
+            footer.getStyleClass().add("app-footer");
             footer.setAlignment(Pos.BOTTOM_LEFT);
             footer.setPadding(new Insets(0, 0, 8, 15));
 

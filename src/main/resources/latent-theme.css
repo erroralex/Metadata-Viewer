@@ -43,6 +43,10 @@
     -fx-background:       -app-bg-card;
 }
 
+.app-footer {
+    -fx-background-color: -app-bg-card;
+}
+
 .content-title {
     -fx-text-fill:   -app-accent;
     -fx-font-weight: 700;

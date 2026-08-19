@@ -5,6 +5,30 @@ This document tracks recent changes, current context, and next steps for AI and 
 
 ## Recent Changes
 
+### v1.2.5 released
+- Bumped `pom.xml` to `1.2.5` and updated the jar-filename references in `AGENTS.md`, `CONTRIBUTING.md`,
+  and `Package CMD.md` to match, per the versioning convention from prior releases.
+- Added `docs/release-notes.v1.2.5.md` covering the new Browse button and the footer background fix below.
+- Tagged and pushed `v1.2.5` to trigger the release workflow.
+
+### Explicit Browse button, and footer background blending
+- Added a "Browse..." button (`ExtractorView.createBrowseButton()`) above the image drop-zone, so a new
+  file can be picked via `FileChooser` even when an image is already loaded — previously, clicking the
+  drop-zone with an image loaded only opened the fullscreen preview (`showFullScreenImage`), so browsing
+  a new file required either drag-and-drop or clicking the tiny fullscreen X to get back to an empty
+  drop-zone first. The button just calls the existing `openFilePicker()`.
+- The lower-left dev-credit footer bar (`MetadataApp`'s `footer` HBox, added in the previous
+  dev-credit-logo session) had no explicit background, so it inherited `.root`'s `-app-bg-main`
+  (near-black) while the content panel right above it (`.content-view`) uses the lighter `-app-bg-card` —
+  visible as a seam/strip at the bottom of the window. Gave the footer an `.app-footer` style class in
+  `latent-theme.css` set to `-app-bg-card` so it blends with the panel above instead. (First attempt used
+  `-app-bg-main` on the assumption "app bg" meant the outer window canvas — user screenshot showed that
+  made the seam worse/more visible, not less; `-app-bg-card` to match the adjacent content panel was the
+  fix that actually blended.)
+- Verified both visually via a live run (IntelliJ run config `com.nilsson.metadataviewer.MetadataApp`,
+  screenshotted with PowerShell `System.Drawing`): Browse button renders above the drop-zone, footer strip
+  now reads as one continuous surface with the panel above it.
+
 ### Dev-credit logo swapped for the real design-system asset
 - `src/main/resources/alx_logo.png` was a flat solid-purple version of the "ALX" wordmark, not the
   gradient version the design system and sibling apps actually use. Replaced it with the canonical file

@@ -86,7 +86,7 @@ public class ExtractorView extends ScrollPane {
         fullScreenHint.setVisible(false);
         fullScreenHint.setManaged(false);
 
-        imageColumn.getChildren().addAll(imageArea, fullScreenHint, createRawButton());
+        imageColumn.getChildren().addAll(createBrowseButton(), imageArea, fullScreenHint, createRawButton());
 
         // --- Right: metadata panel ---
         VBox metadataPanel = new VBox(15);
@@ -331,6 +331,15 @@ public class ExtractorView extends ScrollPane {
             e.printStackTrace();
             view.setImage(null);
         }
+    }
+
+    private Button createBrowseButton() {
+        Button btnBrowse = new Button("Browse...");
+        btnBrowse.setGraphic(new FontIcon(FontAwesome.FOLDER_OPEN));
+        btnBrowse.getStyleClass().add("button");
+        btnBrowse.setMaxWidth(Double.MAX_VALUE);
+        btnBrowse.setOnAction(e -> openFilePicker());
+        return btnBrowse;
     }
 
     private Button createRawButton() {
