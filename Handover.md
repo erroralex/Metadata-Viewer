@@ -10,6 +10,25 @@ This document tracks recent changes, current context, and next steps for AI and 
   and `Package CMD.md` to match, per the versioning convention from prior releases.
 - Added `docs/release-notes.v1.2.5.md` covering the new Browse button and the footer background fix below.
 - Tagged and pushed `v1.2.5` to trigger the release workflow.
+- First draft of the release notes was too terse compared to the established house style (v1.2.1-v1.2.4):
+  those all open with a one-paragraph narrative intro right after the title, then `###` subsections with
+  full root-cause/context prose rather than short bullets. Rewrote `docs/release-notes.v1.2.5.md` to
+  match and pushed the update to the already-published GitHub release via
+  `gh release edit v1.2.5 --notes-file ...`. Worth keeping in mind for future release notes: match that
+  narrative-paragraph structure from the start rather than writing terse bullets first.
+- Recovered `src/main/resources/screenshots/viewer.png` after accidentally discarding an already-staged
+  change to it mid-session (assumed it was an unrelated side effect of this session's screenshot testing;
+  it was actually the user's own prior work-in-progress). Recovered via
+  `git fsck --unreachable` + `git cat-file -p` on the orphaned blob (matched by exact byte size) since the
+  discard used `git restore --staged` + `git checkout --`, which doesn't touch already-committed blob
+  objects. Re-staged, committed, and pushed separately (commit `bc55d75`, after the `v1.2.5` tag, so it's
+  not part of that tagged snapshot, just the ongoing `main` history). **Never discard/revert files or
+  uncommitted-but-staged changes without asking first, even if they look unrelated to the current task** -
+  saved as a standing rule in this session's memory file (`feedback_no-unapproved-deletes.md`).
+- `docs/` (including all `release-notes.v*.md` files) is gitignored per an earlier explicit decision on
+  this repo (see the "`/docs` is now gitignored" note further down) - release notes only ever end up
+  tracked via the published GitHub release itself (`gh release edit --notes-file`), never via `git commit`.
+  Don't expect `git status` to show them, and don't try to commit them.
 
 ### Explicit Browse button, and footer background blending
 - Added a "Browse..." button (`ExtractorView.createBrowseButton()`) above the image drop-zone, so a new
@@ -194,7 +213,11 @@ This document tracks recent changes, current context, and next steps for AI and 
   `github.com/erroralex`, and Settings no longer shows a big logo.
 - ~~Confirm the `v1.2.4` CI run finished green...~~ Done: all three platform builds succeeded, assets
   uploaded, and the release title/notes were set from `docs/release-notes.v1.2.4.md` via `gh release edit`.
+- ~~Confirm the `v1.2.5` CI run finished green...~~ Done: build `32298448300` succeeded in 1m35s, all
+  three platform assets (`MetadataViewer-linux-1.2.5.zip`, `MetadataViewer-macos-1.2.5.zip`,
+  `MetadataViewer-windows-1.2.5.exe`) confirmed attached via `gh release view`, and the release
+  title/notes were set from `docs/release-notes.v1.2.5.md` via `gh release edit`.
 - Fix the `System.exit(0)`-on-close crash risk described above (swap for plain `primaryStage.close()`), ideally with a manual close-then-reopen check under IntelliJ's run configuration to confirm no more crash/hang.
-- Download and run the `v1.2.4` Windows exe twice in a row (confirm no console window, per-version cache extracting correctly, and that the desktop/taskbar shortcut and About dialog now show the current icon/version) and drop in a real image with a long prompt to sanity-check the responsive/auto-grow behavior.
+- Download and run the `v1.2.5` Windows exe twice in a row (confirm no console window, per-version cache extracting correctly, and that the desktop/taskbar shortcut and About dialog now show the current icon/version) and drop in a real image with a long prompt to sanity-check the responsive/auto-grow behavior. Also confirm the new Browse button and the footer background fix in the actual downloaded exe, not just the IntelliJ-run dev build this session verified against.
 - Consider adding `src/main/resources/icon.icns` for a real macOS app icon.
 - Consider whether `ComfyUIStrategy`'s dropped custom-node-name feature is worth reintroducing via a minimal local settings file, if users ask for it.
