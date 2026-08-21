@@ -32,6 +32,17 @@ A high-performance JavaFX desktop application designed to inspect and extract ge
 
 ---
 
+## 🔐 Stateless, Portable & Private
+
+Built as a lightweight, zero-setup utility for quick, on-demand inspection.
+
+* **100% Offline / No Telemetry:** No network calls, no analytics, no cloud dependency. Your images and prompts never leave your machine.
+* **Zero Setup:** No database, no config files, no background service. Drop an image and inspect it — nothing is written to disk.
+* **Portable Build:** Ships as a single self-contained executable/app-image with a bundled Java 21 runtime. No system-wide Java installation required.
+* **Lightweight:** Programmatic JavaFX (no FXML) keeps startup instant and the footprint small.
+
+---
+
 ## ✨ Key Features
 
 * **Universal Compatibility:** Intelligent parsing for **ComfyUI** (API & Workflow graphs), **SwarmUI**, **Automatic1111 / Forge**, **InvokeAI**, and **NovelAI**.
@@ -51,6 +62,15 @@ A high-performance JavaFX desktop application designed to inspect and extract ge
 
 ---
 
+## 💻 System Requirements
+
+* **OS:** Windows 10/11 (64-bit), Linux, or macOS (11+).
+* **Memory:** Minimal. A few hundred MB of RAM is sufficient — no database or background indexing.
+* **Storage:** ~100MB for the application (bundled Java 21 runtime included).
+* **Network:** Not required. Metadata Viewer performs no network calls of any kind.
+
+---
+
 ## 🛠️ Technical Architecture
 
 * **Strategy Pattern:** Tool-specific parsing strategies (`ComfyUIStrategy`, `CommonStrategy`, `SwarmUIStrategy`, `InvokeAIStrategy`, `NovelAIStrategy`) with heuristic chunk scoring.
@@ -61,10 +81,26 @@ A high-performance JavaFX desktop application designed to inspect and extract ge
 
 ## 🚀 Getting Started
 
-Grab the latest standalone build for your OS from the [Releases](https://github.com/erroralex/Metadata-Viewer/releases) page — no Java installation required.
+[![Download Latest Release](https://img.shields.io/badge/Download-Latest_Release-2ea44f?style=for-the-badge&logo=github&logoColor=white)](https://github.com/erroralex/Metadata-Viewer/releases/latest)
 
-* **Windows:** download the `MetadataViewer-windows-<version>.exe` asset and run it directly — it's a single self-contained file.
-* **macOS / Linux:** download the `.zip` for your OS, extract it (a real "Extract All", not just browsing into the zip), and run the app from inside the extracted folder.
+1.  **Download** the appropriate file for your OS:
+    *   **Windows:** `MetadataViewer-windows-X.X.X.exe` — single self-contained file, no installation required.
+    *   **Linux:** `MetadataViewer-linux-X.X.X.zip`
+    *   **macOS:** `MetadataViewer-macos-X.X.X.zip`
+2.  **Extract** the `.zip` (macOS/Linux only — a real "Extract All", not just browsing into the archive) and **run** the app from inside the extracted folder. No installation is required.
+3.  **Drop an image** onto the preview to extract its generation metadata instantly.
+
+> **🍎 macOS Users:**
+> Because this app is not yet signed with an Apple Developer Certificate, you may see an error saying the app is **"damaged and can't be opened."** This is a standard macOS security message for unsigned apps.
+>
+> **To fix this:**
+> 1. Move the app to your **Applications** folder.
+> 2. Open **Terminal**.
+> 3. Run the following command to clear the quarantine attribute:
+>    ```bash
+>    sudo xattr -cr "/Applications/MetadataViewer.app"
+>    ```
+> 4. You can now open the app normally.
 
 Building from source instead? See [CONTRIBUTING.md](CONTRIBUTING.md).
 
@@ -72,7 +108,7 @@ Building from source instead? See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## 📜 License
 
-Distributed under the **MIT License with Commons Clause** — see [LICENSE.md](LICENSE.md). Free to use, modify, and distribute; the Commons Clause condition means you can't sell the Software itself (e.g. as a hosted or paid service).
+Distributed under the **MIT License with the Commons Clause**. Free to use, modify, and share. The Commons Clause restricts *selling* the Software or offering it as a paid hosted/consulting service. See [LICENSE.md](LICENSE.md) for the full text.
 
 ---
 
